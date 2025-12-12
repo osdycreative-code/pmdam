@@ -55,15 +55,16 @@ interface PersistenceContextType {
     // AP/AR
     fetchAccountsPayable: () => Promise<void>;
     createAccountPayable: (item: any) => Promise<void>;
-    updateAccountPayable: (id: number, updates: any) => Promise<void>;
-    deleteAccountPayable: (id: number) => Promise<void>;
+    updateAccountPayable: (id: string, updates: any) => Promise<void>;
+    deleteAccountPayable: (id: string) => Promise<void>;
 
     fetchAccountsReceivable: () => Promise<void>;
     createAccountReceivable: (item: any) => Promise<void>;
-    updateAccountReceivable: (id: number, updates: any) => Promise<void>;
-    deleteAccountReceivable: (id: number) => Promise<void>;
+    updateAccountReceivable: (id: string, updates: any) => Promise<void>;
+    deleteAccountReceivable: (id: string) => Promise<void>;
 
     createProject: (nombre: string, tipo: string, presupuesto: number) => Promise<void>;
+    updateProject: (id: number, updates: Partial<ProyectoMaestro>) => Promise<void>;
     deleteProject: (id: number) => Promise<void>;
     
     createTask: (task: any) => Promise<void>;
@@ -160,16 +161,16 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         } catch (err: any) { setError(err.message); }
     }, []);
 
-    const updateAccountPayable = useCallback(async (id: number, updates: any) => {
+    const updateAccountPayable = useCallback(async (id: string, updates: any) => {
         try {
-            await AccountsPayableAPI.update(id, updates);
+            await AccountsPayableAPI.update(parseInt(id), updates);
             setAccountsPayable(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
         } catch (err: any) { setError(err.message); }
     }, []);
 
-    const deleteAccountPayable = useCallback(async (id: number) => {
+    const deleteAccountPayable = useCallback(async (id: string) => {
         try {
-            await AccountsPayableAPI.delete(id);
+            await AccountsPayableAPI.delete(parseInt(id));
             setAccountsPayable(prev => prev.filter(item => item.id !== id));
         } catch (err: any) { setError(err.message); }
     }, []);
@@ -189,16 +190,16 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         } catch (err: any) { setError(err.message); }
     }, []);
 
-    const updateAccountReceivable = useCallback(async (id: number, updates: any) => {
+    const updateAccountReceivable = useCallback(async (id: string, updates: any) => {
         try {
-            await AccountsReceivableAPI.update(id, updates);
+            await AccountsReceivableAPI.update(parseInt(id), updates);
             setAccountsReceivable(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
         } catch (err: any) { setError(err.message); }
     }, []);
 
-    const deleteAccountReceivable = useCallback(async (id: number) => {
+    const deleteAccountReceivable = useCallback(async (id: string) => {
         try {
-            await AccountsReceivableAPI.delete(id);
+            await AccountsReceivableAPI.delete(parseInt(id));
             setAccountsReceivable(prev => prev.filter(item => item.id !== id));
         } catch (err: any) { setError(err.message); }
     }, []);
@@ -216,6 +217,19 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             setLoading(false);
         }
     }, [fetchProjects]);
+
+    const updateProject = useCallback(async (id: number, updates: Partial<ProyectoMaestro>) => {
+        setLoading(true);
+        try {
+            const updatedProject = await ProjectsAPI.update(id, updates);
+            setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updatedProject } : p));
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     const deleteProject = useCallback(async (id: number) => {
         setLoading(true);
@@ -292,7 +306,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             categories, accountsPayable, accountsReceivable,
             loading, error,
             fetchProjects, fetchTasks, fetchFinances,
-            createProject, deleteProject, createTask, updateTask, deleteTask,
+            createProject, updateProject, deleteProject, createTask, updateTask, deleteTask,
             createFinance, deleteFinance,
             fetchCategories, createCategory, deleteCategory,
             fetchAccountsPayable, createAccountPayable, updateAccountPayable, deleteAccountPayable,

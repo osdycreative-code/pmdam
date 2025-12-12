@@ -1,5 +1,3 @@
-
-
 export enum TaskStatus {
   TODO = 'To Do',
   IN_PROGRESS = 'In Progress',
@@ -40,8 +38,11 @@ export interface CustomFieldDefinition {
 
 export enum ViewMode {
   LIST = 'list',
+  TABLE = 'table',
   BOARD = 'board',
+  KANBAN = 'kanban',
   CALENDAR = 'calendar',
+  ACCORDION = 'accordion', // Desplegable
 }
 
 // New Enum for Module Types
@@ -115,7 +116,6 @@ export interface AuthToken {
   timestamp: Date;
 }
 
-// ... existing code ...
 export interface AppNotification {
     id: string;
     title: string;
@@ -202,7 +202,7 @@ export interface PaymentHistory {
 }
 
 export interface AccountPayable {
-  id: number;
+  id: string;
   name: string;
   totalAmount: number;
   paidAmount: number;
@@ -214,7 +214,7 @@ export interface AccountPayable {
 }
 
 export interface AccountReceivable {
-  id: number;
+  id: string;
   name: string;
   totalAmount: number;
   paidAmount: number;

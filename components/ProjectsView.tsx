@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePersistence } from '../src/context/CentralizedPersistenceContext';
-import { Search, Plus, Calendar, FolderKanban, Pencil, Trash2, Loader2, DollarSign, PieChart, ArrowLeft, CheckCircle2, Circle, Clock } from 'lucide-react';
-import { ProyectoMaestro, Tarea, EstadoTarea } from '../types';
+import { Search, Plus, Calendar, FolderKanban, Pencil, Trash2, Loader2, DollarSign, PieChart, ArrowLeft, CheckCircle2, Circle, Clock, LayoutList, Table as TableIcon, KanbanSquare, Calendar as CalendarIcon, ListTree, GripHorizontal, ChevronDown, ChevronRight, CircleDashed } from 'lucide-react';
+import { ProyectoMaestro, Tarea, EstadoTarea, ViewMode } from '../types';
+import { TaskEditModal } from './TaskEditModal';
 
 export const ProjectsView: React.FC = () => {
     const { 
-        projects, createProject, deleteProject, 
+        projects, createProject, updateProject, deleteProject, 
         tasks, fetchTasks, createTask, updateTask, deleteTask,
         loading, error 
     } = usePersistence();
@@ -14,6 +15,7 @@ export const ProjectsView: React.FC = () => {
     // View State
     const [selectedProject, setSelectedProject] = useState<ProyectoMaestro | null>(null);
     const [editingTask, setEditingTask] = useState<Tarea | null>(null);
+    const [editingProject, setEditingProject] = useState<ProyectoMaestro | null>(null);
 
     // Project List State
     const [searchTerm, setSearchTerm] = useState('');
@@ -24,13 +26,69 @@ export const ProjectsView: React.FC = () => {
     const [tipoActivo, setTipoActivo] = useState('Web');
     const [presupuesto, setPresupuesto] = useState(0);
 
+    // Edit Project Form State
+    const [editNombreProyecto, setEditNombreProyecto] = useState('');
+    const [editTipoActivo, setEditTipoActivo] = useState('Web');
+    const [editPresupuesto, setEditPresupuesto] = useState(0);
+
     // New Task Form State
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskPriority, setNewTaskPriority] = useState('Media');
     const [newTaskDueDate, setNewTaskDueDate] = useState('');
 
-    // Fetch tasks when a project is selected
+    // View Modes State
+    const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.LIST);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (group: string) => {
+        setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+    };
+    const isGroupExpanded = (group: string) => expandedGroups[group] !== false;
+
+    // Helpers for Views
+    const getStatusIcon = (s: string) => {
+        switch(s) {
+            case 'Terminado': return <CheckCircle2 size={18} className="text-green-500" />;
+            case 'En Progreso': return <CircleDashed size={18} className="text-blue-500 animate-[spin_3s_linear_infinite]" />;
+            case 'Bloqueado': return <Circle size={18} className="text-red-400" />;
+            default: return <Circle size={18} className="text-gray-300" />;
+        }
+    };
+    const getPriorityColor = (p: string) => {
+        switch(p?.toLowerCase()) {
+            case 'urgente': return 'text-red-600 bg-red-50';
+            case 'alta': return 'text-orange-600 bg-orange-50';
+            case 'media': return 'text-yellow-600 bg-yellow-50';
+            case 'baja': return 'text-gray-500 bg-gray-50';
+            default: return 'text-gray-500';
+        }
+    };
+
+    // Kanban DnD
+    const onDragStart = (e: React.DragEvent, taskId: string) => {
+        e.dataTransfer.setData("taskId", taskId);
+    };
+    const onDrop = async (e: React.DragEvent, status: string) => {
+        const taskId = parseInt(e.dataTransfer.getData("taskId"));
+        if(taskId) await updateTask(taskId, { estado: status });
+    };
+    const onDragOver = (e: React.DragEvent) => e.preventDefault();
+
+    // Calendar Days Calculation
+    const calendarDays = React.useMemo(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(year, month, 1).getDay();
+        const days: (Date | null)[] = [];
+        for(let i = 0; i < firstDay; i++) days.push(null);
+        for(let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+        return days;
+    }, []);
+
+    const availableStatuses = ['Por Hacer', 'En Progreso', 'En Revisión', 'Bloqueado', 'Terminado'];
     useEffect(() => {
         if (selectedProject) {
             fetchTasks(selectedProject.id);
@@ -48,6 +106,13 @@ export const ProjectsView: React.FC = () => {
         setIsModalOpen(true);
     };
 
+    const handleOpenEdit = (project: ProyectoMaestro) => {
+        setEditingProject(project);
+        setEditNombreProyecto(project.nombre_proyecto);
+        setEditTipoActivo(project.tipo_activo);
+        setEditPresupuesto(project.presupuesto_asignado);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -55,6 +120,31 @@ export const ProjectsView: React.FC = () => {
             setIsModalOpen(false);
         } catch (err) {
             console.error("Failed to create project", err);
+        }
+    };
+
+    const handleUpdateProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingProject) return;
+        
+        try {
+            await updateProject(editingProject.id, {
+                nombre_proyecto: editNombreProyecto,
+                tipo_activo: editTipoActivo,
+                presupuesto_asignado: editPresupuesto
+            });
+            setEditingProject(null);
+            // If we're editing the currently selected project, update it
+            if (selectedProject && selectedProject.id === editingProject.id) {
+                setSelectedProject({
+                    ...selectedProject,
+                    nombre_proyecto: editNombreProyecto,
+                    tipo_activo: editTipoActivo,
+                    presupuesto_asignado: editPresupuesto
+                });
+            }
+        } catch (err) {
+            console.error("Failed to update project", err);
         }
     };
 
@@ -138,21 +228,42 @@ export const ProjectsView: React.FC = () => {
                         </div>
                     </div>
                     
-                    <button 
-                        onClick={() => setShowTaskForm(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium text-sm transition-all shadow-sm"
-                        title="Add New Task"
-                    >
-                        <Plus size={16} /> Add Task
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => handleOpenEdit(selectedProject)}
+                            className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium text-sm transition-all shadow-sm"
+                            title="Edit Project"
+                        >
+                            <Pencil size={16} /> Edit
+                        </button>
+                        <button 
+                            onClick={() => setShowTaskForm(true)}
+                            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium text-sm transition-all shadow-sm"
+                            title="Add New Task"
+                        >
+                            <Plus size={16} /> Add Task
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-auto p-6 bg-gray-50/50">
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        {/* Task Creation Form (Inline) */}
-                        {showTaskForm && (
-                            <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm animate-[slideDown_0.2s_ease-out]">
+                <div className="flex-1 overflow-auto bg-gray-50/50 flex flex-col">
+                     {/* View Switcher Toolbar */}
+                     <div className="px-6 py-4 flex items-center justify-between shrink-0">
+                        <h3 className="text-sm font-bold text-gray-700">Project Tasks</h3>
+                        <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                            <button onClick={() => setViewMode(ViewMode.LIST)} className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all ${viewMode === ViewMode.LIST ? 'bg-gray-100 text-gray-900 font-medium' : ''}`} title="List View"><LayoutList size={16} /></button>
+                            <button onClick={() => setViewMode(ViewMode.TABLE)} className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all ${viewMode === ViewMode.TABLE ? 'bg-gray-100 text-gray-900 font-medium' : ''}`} title="Table View"><TableIcon size={16} /></button>
+                            <button onClick={() => setViewMode(ViewMode.BOARD)} className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all ${viewMode === ViewMode.BOARD || viewMode === ViewMode.KANBAN ? 'bg-gray-100 text-gray-900 font-medium' : ''}`} title="Kanban View"><KanbanSquare size={16} /></button>
+                            <button onClick={() => setViewMode(ViewMode.CALENDAR)} className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all ${viewMode === ViewMode.CALENDAR ? 'bg-gray-100 text-gray-900 font-medium' : ''}`} title="Calendar View"><CalendarIcon size={16} /></button>
+                            <button onClick={() => setViewMode(ViewMode.ACCORDION)} className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all ${viewMode === ViewMode.ACCORDION ? 'bg-gray-100 text-gray-900 font-medium' : ''}`} title="Accordion View"><ListTree size={16} /></button>
+                        </div>
+                     </div>
+
+                    <div className="flex-1 overflow-auto px-6 pb-6">
+                         {/* Inline Task Form */}
+                         {showTaskForm && (
+                            <div className="mb-6 bg-white p-4 rounded-xl border border-indigo-100 shadow-sm animate-[slideDown_0.2s_ease-out]">
                                 <h3 className="text-sm font-bold text-gray-700 mb-3">New Task</h3>
                                 <form onSubmit={handleCreateTask} className="space-y-4">
                                     <input 
@@ -207,31 +318,214 @@ export const ProjectsView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Task List */}
-                        <div className="space-y-3">
-                            {tasks.filter(t => !t.es_subtarea_de_id).length === 0 ? (
-                                <div className="text-center py-12 text-gray-400">
-                                    <CheckCircle2 size={48} className="mx-auto mb-3 text-gray-200" />
-                                    <p>No tasks yet. Create one to get started!</p>
-                                </div>
-                            ) : (
-                                tasks.filter(t => !t.es_subtarea_de_id).map(task => (
-                                    <TaskItem 
-                                        key={task.id} 
-                                        task={task} 
-                                        allTasks={tasks} 
-                                        onEdit={(t) => setEditingTask(t)}
-                                        onDelete={(id) => {
-                                            if(window.confirm('Delete this task?')) {
-                                                deleteTask(id);
-                                            }
-                                        }}
-                                        getAssestColor={getAssestColor}
-                                        getTaskPriorityColor={getTaskPriorityColor}
-                                    />
-                                ))
-                            )}
-                        </div>
+                        {/* LIST VIEW */}
+                        {viewMode === ViewMode.LIST && (
+                            <div className="space-y-3">
+                                {tasks.filter(t => !t.es_subtarea_de_id).length === 0 && !showTaskForm ? (
+                                    <div className="text-center py-12 text-gray-400">
+                                        <CheckCircle2 size={48} className="mx-auto mb-3 text-gray-200" />
+                                        <p>No tasks yet. Create one to get started!</p>
+                                    </div>
+                                ) : (
+                                    tasks.filter(t => !t.es_subtarea_de_id).map(task => (
+                                        <TaskItem 
+                                            key={task.id} 
+                                            task={task} 
+                                            allTasks={tasks} 
+                                            onEdit={(t: any) => setEditingTask(t)}
+                                            onDelete={(id: number) => {
+                                                if(window.confirm('Delete this task?')) {
+                                                    deleteTask(id);
+                                                }
+                                            }}
+                                            getAssestColor={getAssestColor}
+                                            getTaskPriorityColor={getTaskPriorityColor}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* KANBAN VIEW */}
+                        {(viewMode === ViewMode.BOARD || viewMode === ViewMode.KANBAN) && (
+                           <div className="h-full overflow-x-auto min-h-[400px]">
+                               <div className="flex gap-4 h-full min-w-max pb-4">
+                                   {availableStatuses.map(status => (
+                                       <div 
+                                         key={status} 
+                                         onDrop={(e) => onDrop(e, status)}
+                                         onDragOver={onDragOver}
+                                         className="w-72 flex flex-col h-full bg-gray-100/50 rounded-xl border border-gray-200/60"
+                                       >
+                                           <div className="p-3 flex items-center justify-between font-medium text-xs text-gray-500 uppercase tracking-wide bg-gray-50/50 rounded-t-xl">
+                                               <div className="flex items-center gap-2">
+                                                   {getStatusIcon(status)}
+                                                   {status}
+                                               </div>
+                                               <span className="bg-white border border-gray-200 px-2 rounded-full text-[10px] text-gray-600">
+                                                   {tasks.filter(t => t.estado === status && !t.es_subtarea_de_id).length}
+                                               </span>
+                                           </div>
+                                            <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                                                {tasks.filter(t => t.estado === status && !t.es_subtarea_de_id).map(task => (
+                                                    <div
+                                                        key={task.id}
+                                                        draggable
+                                                        onDragStart={(e) => onDragStart(e, task.id.toString())}
+                                                        onClick={() => setEditingTask(task)}
+                                                        className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${getPriorityColor(task.prioridad)}`}>
+                                                                {task.prioridad}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm font-medium text-gray-800 mb-2 line-clamp-2">
+                                                            {task.titulo_tarea}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                                                            {task.fecha_vencimiento && (
+                                                                <span className="flex items-center gap-1"><CalendarIcon size={10} /> {new Date(task.fecha_vencimiento).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                       </div>
+                                   ))}
+                               </div>
+                           </div>
+                        )}
+
+                        {/* TABLE VIEW */}
+                        {viewMode === ViewMode.TABLE && (
+                             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-w-[600px]">
+                                 <table className="w-full text-sm text-left">
+                                     <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                                         <tr>
+                                             <th className="px-4 py-3">Task</th>
+                                             <th className="px-4 py-3">Status</th>
+                                             <th className="px-4 py-3">Priority</th>
+                                             <th className="px-4 py-3">Due Date</th>
+                                             <th className="px-4 py-3">Actions</th>
+                                         </tr>
+                                     </thead>
+                                     <tbody className="divide-y divide-gray-100">
+                                         {tasks.filter(t => !t.es_subtarea_de_id).map(task => (
+                                             <tr 
+                                                key={task.id} 
+                                                className="hover:bg-gray-50 group cursor-pointer"
+                                                onClick={() => setEditingTask(task)}
+                                            >
+                                                 <td className="px-4 py-3 font-medium text-gray-900 border-r border-transparent">
+                                                     <div className="flex items-center gap-2">
+                                                        {getStatusIcon(task.estado)}
+                                                        {task.titulo_tarea}
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.estado === 'Terminado' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{task.estado}</span>
+                                                 </td>
+                                                 <td className="px-4 py-3">
+                                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(task.prioridad)}`}>{task.prioridad}</span>
+                                                 </td>
+                                                 <td className="px-4 py-3 text-gray-500">
+                                                     {task.fecha_vencimiento ? new Date(task.fecha_vencimiento).toLocaleDateString() : '-'}
+                                                 </td>
+                                                 <td className="px-4 py-3">
+                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                         <button onClick={() => setEditingTask(task)} className="text-gray-400 hover:text-indigo-600" title="Edit Task"><Pencil size={14}/></button>
+                                                         <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-600" title="Delete Task"><Trash2 size={14}/></button>
+                                                     </div>
+                                                 </td>
+                                             </tr>
+                                         ))}
+                                     </tbody>
+                                 </table>
+                             </div>
+                        )}
+
+                        {/* CALENDAR VIEW */}
+                        {viewMode === ViewMode.CALENDAR && (
+                             <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                    <div key={day} className="bg-gray-50 p-2 text-center text-xs font-semibold text-gray-500 uppercase">
+                                        {day}
+                                    </div>
+                                ))}
+                                {calendarDays.map((date, idx) => {
+                                    if(!date) return <div key={idx} className="bg-white h-32"></div>;
+                                    const dayTasks = tasks.filter(t => t.fecha_vencimiento && new Date(t.fecha_vencimiento).toDateString() === date.toDateString());
+                                    return (
+                                        <div key={idx} className="bg-white min-h-[8rem] p-2 hover:bg-gray-50 transition-colors">
+                                            <div className={`text-xs font-medium mb-1 ${date.toDateString() === new Date().toDateString() ? 'text-indigo-600' : 'text-gray-500'}`}>
+                                                {date.getDate()}
+                                            </div>
+                                            <div className="space-y-1">
+                                                {dayTasks.map(task => (
+                                                    <div 
+                                                        key={task.id}
+                                                        onClick={() => setEditingTask(task)}
+                                                        className={`text-[10px] px-1.5 py-1 rounded truncate cursor-pointer ${task.estado === 'Terminado' ? 'bg-gray-100 text-gray-400 line-through' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}`}
+                                                    >
+                                                        {task.titulo_tarea}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* ACCORDION VIEW */}
+                        {viewMode === ViewMode.ACCORDION && (
+                            <div className="space-y-4">
+                                {availableStatuses.map(status => {
+                                    const groupTasks = tasks.filter(t => t.estado === status && !t.es_subtarea_de_id);
+                                    if (groupTasks.length === 0) return null;
+                                    const isExpanded = isGroupExpanded(status);
+                                    
+                                    return (
+                                        <div key={status} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                            <button 
+                                                onClick={() => setExpandedGroups(prev => ({ ...prev, [status]: !isExpanded }))}
+                                                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2 font-medium text-gray-700 text-sm">
+                                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                    {getStatusIcon(status)}
+                                                    <span>{status}</span>
+                                                    <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full ml-2">
+                                                        {groupTasks.length}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                            {isExpanded && (
+                                                <div className="divide-y divide-gray-100">
+                                                    {groupTasks.map(task => (
+                                                        <div key={task.id} className="p-3 pl-9 hover:bg-gray-50 transition-colors">
+                                                             <TaskItem 
+                                                                task={task} 
+                                                                allTasks={tasks} 
+                                                                onEdit={(t: any) => setEditingTask(t)}
+                                                                onDelete={(id: number) => {
+                                                                    if(window.confirm('Delete this task?')) {
+                                                                        deleteTask(id);
+                                                                    }
+                                                                }}
+                                                                getAssestColor={getAssestColor}
+                                                                getTaskPriorityColor={getTaskPriorityColor}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -261,6 +555,77 @@ export const ProjectsView: React.FC = () => {
                              });
                         }}
                     />
+                )}
+
+                {/* Edit Project Modal */}
+                {editingProject && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <form onSubmit={handleUpdateProject} className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-[fadeIn_0.2s_ease-out] flex flex-col">
+                            <h2 className="text-lg font-bold mb-6 text-gray-800">Edit Project</h2>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Project Name</label>
+                                    <input 
+                                        autoFocus
+                                        required 
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-2 text-sm" 
+                                        value={editNombreProyecto} 
+                                        onChange={e => setEditNombreProyecto(e.target.value)}
+                                        placeholder="e.g. Nexus App Launch"
+                                        title="Project Name"
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Asset Type</label>
+                                    <select 
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-2 text-sm"
+                                        value={editTipoActivo}
+                                        onChange={(e) => setEditTipoActivo(e.target.value)}
+                                        title="Asset Type"
+                                    >
+                                        <option value="Web">Web Platform</option>
+                                        <option value="App">Mobile App</option>
+                                        <option value="Ebook">Digital Book</option>
+                                        <option value="Curso">Online Course</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Assigned Budget</label>
+                                    <input 
+                                        type="number"
+                                        min="0"
+                                        step="100"
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-2 text-sm" 
+                                        value={editPresupuesto} 
+                                        onChange={e => setEditPresupuesto(Number(e.target.value))} 
+                                        title="Assigned Budget" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingProject(null)} 
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium text-sm transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={loading}
+                                    className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-colors flex items-center gap-2"
+                                >
+                                    {loading && <Loader2 size={14} className="animate-spin" />}
+                                    Update Project
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 )}
             </div>
         );
@@ -320,6 +685,13 @@ export const ProjectsView: React.FC = () => {
                                     </span>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button 
+                                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(project); }} 
+                                            className="text-gray-400 hover:text-indigo-600 p-1 hover:bg-indigo-50 rounded" 
+                                            title="Edit"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button 
                                             onClick={(e) => handleDelete(e, project.id)} 
                                             className="text-gray-400 hover:text-red-600 p-1 hover:bg-red-50 rounded" 
                                             title="Delete"
@@ -361,10 +733,9 @@ export const ProjectsView: React.FC = () => {
                                         <span className="text-gray-900">{Math.round(project.progreso_total || 0)}%</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        {/* eslint-disable-next-line */}
                                         <div 
-                                            className="h-full bg-teal-500 rounded-full transition-all duration-500 w-[var(--prog)]"
-                                            style={{ '--prog': `${project.progreso_total || 0}%` } as React.CSSProperties}
+                                            className="h-full bg-teal-500 rounded-full transition-all duration-500"
+                                            style={{ width: `${project.progreso_total || 0}%` }}
                                         />
                                     </div>
                                 </div>
@@ -495,155 +866,6 @@ const TaskItem = ({ task, allTasks, onEdit, onDelete, getAssestColor, getTaskPri
             >
                 <Trash2 size={16} />
             </button>
-        </div>
-    );
-};
-
-
-const TaskEditModal = ({ task, allTasks, onClose, onUpdate, onDelete, onCreateSubtask }: any) => {
-    const [title, setTitle] = useState(task.titulo_tarea);
-    const [status, setStatus] = useState(task.estado);
-    const [priority, setPriority] = useState(task.prioridad);
-    const [dueDate, setDueDate] = useState(task.fecha_vencimiento || '');
-    const [desc, setDesc] = useState(task.descripcion || '');
-    
-    // Subtask input
-    const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-    
-    const subtasks = allTasks.filter((t: any) => t.es_subtarea_de_id === task.id);
-
-    const handleSave = () => {
-        onUpdate(task.id, {
-            titulo_tarea: title,
-            estado: status,
-            prioridad: priority,
-            fecha_vencimiento: dueDate || null,
-            descripcion: desc
-        });
-        onClose();
-    };
-
-    const handleAddSub = (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!newSubtaskTitle.trim()) return;
-        onCreateSubtask(task.id, newSubtaskTitle);
-        setNewSubtaskTitle('');
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-end backdrop-blur-sm animate-[fadeIn_0.2s]">
-             <div className="w-full max-w-lg h-full bg-white shadow-2xl p-0 flex flex-col animate-[slideLeft_0.3s]">
-                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                     <h2 className="font-bold text-gray-800">Edit Task</h2>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">Close</button>
-                 </div>
-                 
-                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                     <div className="space-y-4">
-                         <input 
-                            value={title} 
-                            onChange={e => setTitle(e.target.value)} 
-                            className="w-full text-xl font-bold border-none focus:ring-0 p-0 placeholder-gray-300" 
-                            placeholder="Task Title"
-                        />
-                         
-                         <div className="flex gap-4">
-                             <div className="flex-1">
-                                 <label className="text-xs font-bold text-gray-400 uppercase">Status</label>
-                                 <select 
-                                    className="w-full mt-1 border-gray-200 rounded-lg text-sm"
-                                    value={status} 
-                                    onChange={e => setStatus(e.target.value)}
-                                    title="Task Status"
-                                >
-                                     <option value='Por Hacer'>To Do</option>
-                                     <option value='En Progreso'>In Progress</option>
-                                     <option value='Terminado'>Done</option>
-                                 </select>
-                             </div>
-                             <div className="flex-1">
-                                 <label className="text-xs font-bold text-gray-400 uppercase">Priority</label>
-                                  <select 
-                                    className="w-full mt-1 border-gray-200 rounded-lg text-sm"
-                                    value={priority} 
-                                    onChange={e => setPriority(e.target.value)}
-                                    title="Task Priority"
-                                >
-                                     <option value='Alta'>High</option>
-                                     <option value='Media'>Medium</option>
-                                     <option value='Baja'>Low</option>
-                                 </select>
-                             </div>
-                         </div>
-                         
-                          <div>
-                             <label className="text-xs font-bold text-gray-400 uppercase">Due Date</label>
-                             <input 
-                                type="date"
-                                className="w-full mt-1 border-gray-200 rounded-lg text-sm"
-                                value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                                title="Due Date"
-                             />
-                         </div>
-
-                         <div>
-                             <label className="text-xs font-bold text-gray-400 uppercase">Comments / Description</label>
-                             <textarea 
-                                className="w-full mt-1 border-gray-200 rounded-lg text-sm p-3 h-32 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Add details or comments here..."
-                                value={desc}
-                                onChange={e => setDesc(e.target.value)}
-                             />
-                         </div>
-                     </div>
-                     
-                     <div className="border-t border-gray-100 pt-6">
-                         <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-                             Subtasks <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">{subtasks.length}</span>
-                         </h3>
-                         
-                          <ul className="space-y-2 mb-4">
-                             {subtasks.map((sub: any) => (
-                                 <li key={sub.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 group">
-                                     <button 
-                                        onClick={() => onUpdate(sub.id, { estado: sub.estado === 'Terminado' ? 'Por Hacer' : 'Terminado' })}
-                                        className={sub.estado === 'Terminado' ? 'text-green-500' : 'text-gray-300 hover:text-indigo-500'}
-                                    >
-                                         {sub.estado === 'Terminado' ? <CheckCircle2 size={16}/> : <Circle size={16}/>}
-                                     </button>
-                                     <span className={`flex-1 text-sm ${sub.estado === 'Terminado' ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
-                                         {sub.titulo_tarea}
-                                     </span>
-                                     <button 
-                                        onClick={() => onDelete(sub.id)}
-                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                        title="Delete Subtask"
-                                    >
-                                         <Trash2 size={14} />
-                                     </button>
-                                 </li>
-                             ))}
-                         </ul>
-
-                         <form onSubmit={handleAddSub} className="flex gap-2">
-                             <input 
-                                className="flex-1 border-gray-200 rounded-lg text-sm focus:ring-indigo-500" 
-                                placeholder="Add a subtask..."
-                                value={newSubtaskTitle}
-                                onChange={e => setNewSubtaskTitle(e.target.value)}
-                                title="New Subtask Title"
-                            />
-                             <button type="submit" className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors" title="Add Subtask">Add</button>
-                         </form>
-                     </div>
-                 </div>
-
-                 <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between">
-                     <button onClick={() => onDelete(task.id)} className="text-red-600 text-sm font-medium hover:underline">Delete Task</button>
-                     <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm transition-all">Save Changes</button>
-                 </div>
-             </div>
         </div>
     );
 };

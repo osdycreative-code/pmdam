@@ -1,4 +1,4 @@
-
+// import { initializeService, db, getAllObjectsOfTypeFromCache as loadManyOf} from "../local-foraging-store";
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TaskList } from './components/TaskList';
@@ -415,38 +415,31 @@ const App: React.FC = () => {
   };
 
   const deleteSpace = (spaceId: string) => {
-      // 1. Identify Lists to remove
-      const listsToRemove = lists.filter(l => l.spaceId === spaceId);
-      const listIdsToRemove = listsToRemove.map(l => l.id);
+    // 1. Identify Lists to remove
+    const listsToRemove = lists.filter(l => l.spaceId === spaceId);
+    const listIdsToRemove = listsToRemove.map(l => l.id);
 
-      // 2. Remove Space
-      setSpaces(prev => prev.filter(s => s.id !== spaceId));
-      dbService.deleteItem(STORES.SPACES, spaceId);
+    // 2. Remove Space
+    setSpaces(prev => prev.filter(s => s.id !== spaceId));
+    dbService.deleteItem(STORES.SPACES, spaceId);
 
-      // 3. Remove Lists
-      setLists(prev => prev.filter(l => l.spaceId !== spaceId));
-      listsToRemove.forEach(l => dbService.deleteItem(STORES.LISTS, l.id));
+    // 3. Remove Lists
+    setLists(prev => prev.filter(l => l.spaceId !== spaceId));
+    listsToRemove.forEach(l => dbService.deleteItem(STORES.LISTS, l.id));
 
-      // 4. Cascade Remove Items
-      // Ideally this logic should be in the DB service for consistency, but kept here for React state consistency
-      const cascadeDelete = (store: string, items: any[], setter: Function) => {
-          setter((prev: any[]) => {
-             const keep = prev.filter(i => !listIdsToRemove.includes(i.listId));
-             prev.filter(i => listIdsToRemove.includes(i.listId)).forEach(i => dbService.deleteItem(store, i.id));
-             return keep;
-          });
-      };
+    // 4. Cascade Remove Items
+    setFolderItems(prev => {
+      const keep = prev.filter(i => !listIdsToRemove.includes(i.listId));
+      const itemsToDelete = prev.filter(i => listIdsToRemove.includes(i.listId));
+      itemsToDelete.forEach(i => dbService.deleteItem(STORES.FOLDER_ITEMS, i.id));
+      return keep;
+    });
 
-      cascadeDelete(STORES.TASKS, tasks, setTasks);
-      cascadeDelete(STORES.PROJECTS, projects, setProjects);
-      cascadeDelete(STORES.TRANSACTIONS, transactions, setTransactions);
-      cascadeDelete(STORES.FOLDER_ITEMS, folderItems, setFolderItems);
-
-      // 5. Handle Active State
-      if (activeSpaceId === spaceId) {
-          setActiveSpaceId(DASHBOARD_VIEW_ID);
-          setActiveListId(null);
-      }
+    // 5. Handle Active State
+    if (activeSpaceId === spaceId) {
+      setActiveSpaceId(DASHBOARD_VIEW_ID);
+      setActiveListId(null);
+    }
   };
 
   const addModule = (spaceId: string, type: ModuleType, name: string) => {
@@ -574,46 +567,46 @@ const App: React.FC = () => {
 
   // Accounts Payable Functions
   const addAccountPayable = (account: AccountPayable) => {
-      setAccountsPayable(prev => [...prev, account]);
-      dbService.addItem(STORES.ACCOUNTS_PAYABLE, account);
+    setAccountsPayable(prev => [...prev, account]);
+    dbService.addItem(STORES.ACCOUNTS_PAYABLE, account);
   };
 
   const updateAccountPayable = (id: string, updates: Partial<AccountPayable>) => {
-      setAccountsPayable(prev => prev.map(acc => {
-          if (acc.id === id) {
-              const updated = { ...acc, ...updates };
-              dbService.addItem(STORES.ACCOUNTS_PAYABLE, updated);
-              return updated;
-          }
-          return acc;
-      }));
+    setAccountsPayable(prev => prev.map(acc => {
+      if (acc.id === id) {
+        const updated = { ...acc, ...updates };
+        dbService.addItem(STORES.ACCOUNTS_PAYABLE, updated);
+        return updated;
+      }
+      return acc;
+    }));
   };
 
   const deleteAccountPayable = (id: string) => {
-      setAccountsPayable(prev => prev.filter(acc => acc.id !== id));
-      dbService.deleteItem(STORES.ACCOUNTS_PAYABLE, id);
+    setAccountsPayable(prev => prev.filter(acc => acc.id !== id));
+    dbService.deleteItem(STORES.ACCOUNTS_PAYABLE, id);
   };
 
   // Accounts Receivable Functions
   const addAccountReceivable = (account: AccountReceivable) => {
-      setAccountsReceivable(prev => [...prev, account]);
-      dbService.addItem(STORES.ACCOUNTS_RECEIVABLE, account);
+    setAccountsReceivable(prev => [...prev, account]);
+    dbService.addItem(STORES.ACCOUNTS_RECEIVABLE, account);
   };
 
   const updateAccountReceivable = (id: string, updates: Partial<AccountReceivable>) => {
-      setAccountsReceivable(prev => prev.map(acc => {
-          if (acc.id === id) {
-              const updated = { ...acc, ...updates };
-              dbService.addItem(STORES.ACCOUNTS_RECEIVABLE, updated);
-              return updated;
-          }
-          return acc;
-      }));
+    setAccountsReceivable(prev => prev.map(acc => {
+      if (acc.id === id) {
+        const updated = { ...acc, ...updates };
+        dbService.addItem(STORES.ACCOUNTS_RECEIVABLE, updated);
+        return updated;
+      }
+      return acc;
+    }));
   };
 
   const deleteAccountReceivable = (id: string) => {
-      setAccountsReceivable(prev => prev.filter(acc => acc.id !== id));
-      dbService.deleteItem(STORES.ACCOUNTS_RECEIVABLE, id);
+    setAccountsReceivable(prev => prev.filter(acc => acc.id !== id));
+    dbService.deleteItem(STORES.ACCOUNTS_RECEIVABLE, id);
   };
 
   const addFolderItem = (item: FolderItem) => {
@@ -633,10 +626,23 @@ const App: React.FC = () => {
   };
 
   const deleteFolderItem = (id: string) => {
-      // Simple delete, in production this should recursive delete children
-      setFolderItems(prev => prev.filter(i => i.id !== id && i.parentId !== id));
-      dbService.deleteItem(STORES.FOLDER_ITEMS, id);
-      // NOTE: Should ideally query DB for children and delete them too.
+    // Recursive delete: delete item and all its children
+    const deleteRecursive = (itemId: string) => {
+      // First delete all children
+      const children = folderItems.filter(item => item.parentId === itemId);
+      children.forEach(child => deleteRecursive(child.id));
+      
+      // Then delete the item itself
+      setFolderItems(prev => prev.filter(i => i.id !== itemId));
+      dbService.deleteItem(STORES.FOLDER_ITEMS, itemId);
+    };
+    
+    deleteRecursive(id);
+    
+    // If we're deleting the preview item, close the preview
+    if (activeTaskId && activeTaskId === id) {
+      setActiveTaskId(null);
+    }
   };
 
   const organizeFolderItems = (listId: string, parentId: string | null, criteria: 'type' | 'date') => {

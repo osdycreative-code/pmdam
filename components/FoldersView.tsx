@@ -1,5 +1,3 @@
-
-
 import React, { useContext, useState, useRef } from 'react';
 import { StoreContext } from '../App';
 import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil } from 'lucide-react';
@@ -11,6 +9,8 @@ export const FoldersView: React.FC = () => {
     const [newItemName, setNewItemName] = useState('');
     const [isCreating, setIsCreating] = useState<FolderItemType | null>(null);
     const [previewItem, setPreviewItem] = useState<FolderItem | null>(null);
+    const [editingItem, setEditingItem] = useState<FolderItem | null>(null);
+    const [editName, setEditName] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const currentFolderId = currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null;
@@ -45,9 +45,21 @@ export const FoldersView: React.FC = () => {
     };
     
     const handleRename = (item: FolderItem) => {
-        const newName = window.prompt("Rename item:", item.name);
-        if (newName && newName.trim() !== "") {
-            updateFolderItem(item.id, { name: newName });
+        setEditingItem(item);
+        setEditName(item.name);
+    }
+
+    const handleSaveRename = () => {
+        if (editingItem && editName.trim() !== "") {
+            updateFolderItem(editingItem.id, { name: editName.trim() });
+        }
+        setEditingItem(null);
+        setEditName('');
+    }
+
+    const handleDelete = (itemId: string) => {
+        if (window.confirm("Are you sure you want to delete this item?")) {
+            deleteFolderItem(itemId);
         }
     }
 
@@ -275,7 +287,27 @@ export const FoldersView: React.FC = () => {
                     </div>
                 )}
 
-                {visibleItems.length === 0 && !isCreating ? (
+                {/* Rename Input */}
+                {editingItem && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm max-w-md animate-[fadeIn_0.2s_ease-out]">
+                        <form onSubmit={(e) => { e.preventDefault(); handleSaveRename(); }} className="flex flex-col gap-3">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Rename {editingItem.type}</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    value={editName}
+                                    onChange={e => setEditName(e.target.value)}
+                                    className="flex-1 border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                                <button type="submit" className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium">Save</button>
+                                <button type="button" onClick={() => setEditingItem(null)} className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {visibleItems.length === 0 && !isCreating && !editingItem ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400">
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                             <FolderOpen size={32} className="text-gray-300" />
@@ -311,7 +343,7 @@ export const FoldersView: React.FC = () => {
                                         <Pencil size={14} />
                                     </button>
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); deleteFolderItem(item.id); }}
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 hover:border-red-200 border border-transparent"
                                         title="Delete"
                                     >

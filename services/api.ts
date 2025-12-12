@@ -45,6 +45,20 @@ export const ProjectsAPI = {
             p_presupuesto: presupuesto_asignado
         });
         if (error) throw error;
+
+        // LOCAL SYNC UPDATE:
+        // Automatically create the initial task locally so it appears immediately
+        // The Cloud RPC already created it in Postgres, but we are in "Local-First" mode for tasks.
+        if (data && data.id) {
+            await dbLocal.tasks.add({
+                proyecto_id: data.id,
+                titulo_tarea: 'Configuración Inicial del Proyecto',
+                estado: 'Por Hacer',
+                prioridad: 'Alta',
+                sync_status: 'synced' // It's already in the cloud via the RPC
+            });
+        }
+
         return data; 
     },
 

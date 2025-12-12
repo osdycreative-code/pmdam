@@ -1,9 +1,11 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { StoreContext, DASHBOARD_VIEW_ID } from '../App';
-import { Settings, Bell, Search, PlusCircle, Hexagon, Package, BrainCircuit, Palette, Layout, ChevronDown, ChevronRight, Plus, X, CheckSquare, FolderKanban, Banknote, Code2, FolderOpen, Trash2, Clock, LayoutDashboard, MoreVertical, Cog, LogOut, Book } from 'lucide-react';
+import { CloudIndicator } from './CloudIndicator';
 import { ModuleType } from '../types';
+import { Banknote, Bell, Book, BrainCircuit, CheckSquare, ChevronDown, ChevronRight, Clock, Code2, Cog, FolderKanban, FolderOpen, Hexagon, Layout, LayoutDashboard, LogOut, Package, Palette, Plus, Search, Settings, Trash2, X } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
+
   const { spaces, lists, activeSpaceId, activeListId, setActiveSpaceId, setActiveListId, createSpace, updateSpace, deleteSpace, addModule, deleteList, notifications, markNotificationRead, clearAllNotifications, setActiveTaskId, logout, resetData } = useContext(StoreContext);
   const [collapsedSpaces, setCollapsedSpaces] = useState<Set<string>>(new Set());
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
@@ -122,6 +124,11 @@ export const Sidebar: React.FC = () => {
             <Hexagon className="fill-indigo-600 text-indigo-600" size={24} />
             <span>NexusFlow</span>
         </div>
+      </div>
+
+      {/* Cloud Status */}
+      <div className="px-4 py-3 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
+          <CloudIndicator />
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden py-4">
