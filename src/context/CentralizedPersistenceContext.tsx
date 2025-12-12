@@ -72,6 +72,7 @@ interface PersistenceContextType {
     deleteTask: (id: number) => Promise<void>;
     
     createFinance: (transaction: Omit<RegistroFinanzas, 'id'>) => Promise<void>;
+    updateFinance: (id: number, updates: Partial<RegistroFinanzas>) => Promise<void>;
     deleteFinance: (id: number) => Promise<void>;
 
 }
@@ -280,6 +281,15 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
+    const updateFinance = useCallback(async (id: number, updates: Partial<RegistroFinanzas>) => {
+        try {
+            await FinanceAPI.update(id, updates);
+            setFinances(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+        } catch (err: any) {
+            setError(err.message);
+        }
+    }, []);
+
     const deleteFinance = useCallback(async (id: number) => {
         try {
             await FinanceAPI.delete(id);
@@ -307,7 +317,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             loading, error,
             fetchProjects, fetchTasks, fetchFinances,
             createProject, updateProject, deleteProject, createTask, updateTask, deleteTask,
-            createFinance, deleteFinance,
+            createFinance, updateFinance, deleteFinance,
             fetchCategories, createCategory, deleteCategory,
             fetchAccountsPayable, createAccountPayable, updateAccountPayable, deleteAccountPayable,
             fetchAccountsReceivable, createAccountReceivable, updateAccountReceivable, deleteAccountReceivable

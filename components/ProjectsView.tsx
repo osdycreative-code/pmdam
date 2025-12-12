@@ -131,7 +131,8 @@ export const ProjectsView: React.FC = () => {
             await updateProject(editingProject.id, {
                 nombre_proyecto: editNombreProyecto,
                 tipo_activo: editTipoActivo,
-                presupuesto_asignado: editPresupuesto
+                presupuesto_asignado: editPresupuesto,
+                ultima_actualizacion: new Date().toISOString()
             });
             setEditingProject(null);
             // If we're editing the currently selected project, update it
@@ -683,7 +684,7 @@ export const ProjectsView: React.FC = () => {
                                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${getAssestColor(project.tipo_activo)}`}>
                                         {project.tipo_activo}
                                     </span>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1 opacity-100 transition-opacity">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleOpenEdit(project); }} 
                                             className="text-gray-400 hover:text-indigo-600 p-1 hover:bg-indigo-50 rounded" 

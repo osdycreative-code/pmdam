@@ -124,7 +124,7 @@ export const AIDirectoryView: React.FC = () => {
             <div className="flex-1 overflow-auto p-6 bg-gray-50/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredTools.map(tool => (
-                        <div key={tool.id} className="group bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 hover:border-purple-200 flex flex-col h-full relative">
+                        <div key={tool.id} className="group bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 hover:border-purple-400 flex flex-col h-full relative cursor-default">
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-2">
                                      <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide">{tool.category}</span>
@@ -144,7 +144,7 @@ export const AIDirectoryView: React.FC = () => {
                                     >
                                         <Trash2 size={14} />
                                     </button>
-                                    <a href={tool.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-purple-600 ml-1 transition-all duration-200 hover:border-purple-200 border border-transparent rounded">
+                                    <a href={tool.url} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-purple-600 ml-1 transition-all duration-200 hover:border-purple-200 border border-transparent rounded" title={`Visit ${tool.name}`}>
                                         <ExternalLink size={16} />
                                     </a>
                                 </div>
@@ -195,7 +195,7 @@ export const AIDirectoryView: React.FC = () => {
                             <div className="flex gap-4">
                                 <div className="flex-1">
                                     <label className="block text-xs font-medium text-gray-500 mb-1">Cost Model</label>
-                                    <select className="w-full border p-2 rounded" value={newCost} onChange={e => setNewCost(e.target.value as any)}>
+                                    <select className="w-full border p-2 rounded" value={newCost} onChange={e => setNewCost(e.target.value as any)} aria-label="Cost Model">
                                         <option value="Free">Free</option>
                                         <option value="Freemium">Freemium</option>
                                         <option value="Paid">Paid</option>

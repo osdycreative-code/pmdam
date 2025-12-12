@@ -16,8 +16,9 @@ import { LoginPage } from './components/LoginPage';
 import EbookManager from './components/EbookManager';
 import { PersistenceProvider } from './src/context/CentralizedPersistenceContext';
 import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable } from './types';
-import { Bell, X, Loader2 } from 'lucide-react';
+import { Bell, X, Loader2, Menu } from 'lucide-react';
 import { dbService, STORES } from './services/db';
+import { supabase } from './services/supabaseClient';
 
 // Simple Store Context
 interface StoreContextType {
@@ -75,6 +76,8 @@ interface StoreContextType {
   clearAllNotifications: () => void;
   logout: () => void;
   resetData: () => void;
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 export const StoreContext = createContext<StoreContextType>({} as StoreContextType);
@@ -107,6 +110,10 @@ const App: React.FC = () => {
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(DASHBOARD_VIEW_ID);
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  
+  // Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Toast State
   const [currentToast, setCurrentToast] = useState<AppNotification | null>(null);
@@ -185,6 +192,25 @@ const App: React.FC = () => {
       }
   }, [isDbLoading]);
 
+  // --- Supabase Auth Listener ---
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
+        if (session) {
+           await dbService.saveAuthToken(session.access_token);
+           setAuthToken(session.access_token);
+           setIsAuthenticated(true);
+        }
+      } else if (event === 'SIGNED_OUT') {
+           await dbService.clearAuthToken();
+           setAuthToken(null);
+           setIsAuthenticated(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleLoginSuccess = async (token: string) => {
       try {
           await dbService.saveAuthToken(token);
@@ -197,6 +223,7 @@ const App: React.FC = () => {
 
   const logout = async () => {
       try {
+          await supabase.auth.signOut();
           await dbService.clearAuthToken();
           setAuthToken(null);
           setIsAuthenticated(false);
@@ -810,12 +837,26 @@ const App: React.FC = () => {
       addAITool, updateAITool, deleteAITool, addProject, updateProject, deleteProject, saveProjectAsTemplate, addTransaction, updateTransaction, deleteTransaction,
       addAccountPayable, updateAccountPayable, deleteAccountPayable, addAccountReceivable, updateAccountReceivable, deleteAccountReceivable,
       addFolderItem, updateFolderItem, deleteFolderItem, organizeFolderItems,
-      markNotificationRead, clearAllNotifications, logout, resetData
+      markNotificationRead, clearAllNotifications, logout, resetData,
+      isSidebarOpen, toggleSidebar
     }}>
       <div className="flex h-screen w-full bg-white overflow-hidden text-gray-900 relative">
-        <Sidebar />
+        <div className={`flex-shrink-0 bg-gray-50 border-r border-gray-200 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full border-none opacity-0'}`} style={{ overflow: 'hidden' }}>
+             <div className="w-64 h-full"> 
+                 <Sidebar />
+             </div>
+        </div>
 
-        <main className="flex-1 flex flex-col min-w-0 bg-white">
+        <main className="flex-1 flex flex-col min-w-0 bg-white relative">
+           {!isSidebarOpen && (
+               <button 
+                  onClick={toggleSidebar} 
+                  className="absolute top-4 left-4 z-50 p-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-600 transition-all hover:scale-105 group"
+                  title="Open Sidebar"
+               >
+                   <Menu size={20} className="group-hover:text-indigo-600" />
+               </button>
+           )}
           {renderMainContent()}
         </main>
 

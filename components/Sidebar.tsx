@@ -1,12 +1,12 @@
-import React, { useContext, useState, useRef, useEffect } from 'react';
+import React, { useContext, useState, useRef } from 'react';
 import { StoreContext, DASHBOARD_VIEW_ID } from '../App';
 import { CloudIndicator } from './CloudIndicator';
 import { ModuleType } from '../types';
-import { Banknote, Bell, Book, BrainCircuit, CheckSquare, ChevronDown, ChevronRight, Clock, Code2, Cog, FolderKanban, FolderOpen, Hexagon, Layout, LayoutDashboard, LogOut, Package, Palette, Plus, Search, Settings, Trash2, X } from 'lucide-react';
+import { Banknote, Bell, Book, BrainCircuit, CheckSquare, ChevronDown, ChevronRight, Clock, Code2, Cog, FolderKanban, FolderOpen, Hexagon, Layout, LayoutDashboard, LogOut, Package, Palette, Plus, Search, Settings, Trash2, X, PanelLeftClose } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
 
-  const { spaces, lists, activeSpaceId, activeListId, setActiveSpaceId, setActiveListId, createSpace, updateSpace, deleteSpace, addModule, deleteList, notifications, markNotificationRead, clearAllNotifications, setActiveTaskId, logout, resetData } = useContext(StoreContext);
+  const { spaces, lists, activeSpaceId, activeListId, setActiveSpaceId, setActiveListId, createSpace, updateSpace, deleteSpace, addModule, deleteList, notifications, markNotificationRead, clearAllNotifications, setActiveTaskId, logout, resetData, toggleSidebar } = useContext(StoreContext);
   const [collapsedSpaces, setCollapsedSpaces] = useState<Set<string>>(new Set());
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -117,13 +117,20 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0 h-full relative">
+    <div className="bg-gray-50 flex flex-col flex-shrink-0 h-full relative w-full header-sidebar">
       {/* App Header */}
-      <div className="h-14 flex items-center px-4 border-b border-gray-200 bg-white shrink-0">
+      <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 bg-white shrink-0">
         <div className="flex items-center gap-2 font-bold text-lg text-indigo-600">
             <Hexagon className="fill-indigo-600 text-indigo-600" size={24} />
             <span>NexusFlow</span>
         </div>
+        <button 
+            onClick={toggleSidebar}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
+            title="Collapse Sidebar"
+        >
+            <PanelLeftClose size={18} />
+        </button>
       </div>
 
       {/* Cloud Status */}

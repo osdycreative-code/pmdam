@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePersistence, FinanceCategory } from '../src/context/CentralizedPersistenceContext';
-import { Plus, Search, TrendingUp, TrendingDown, DollarSign, Calendar, ArrowUpRight, ArrowDownRight, Trash2, Wallet, Briefcase, Settings, FileText, CreditCard, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Search, TrendingUp, TrendingDown, DollarSign, Calendar, ArrowUpRight, ArrowDownRight, Trash2, Wallet, Briefcase, Settings, FileText, CreditCard, Users, CheckCircle2, AlertCircle, Edit } from 'lucide-react';
 import { TipoTransaccion, AccountPayable, AccountReceivable } from '../types';
 
 type Tab = 'overview' | 'categories' | 'payable' | 'receivable';
@@ -12,13 +12,14 @@ export const FinanceView: React.FC = () => {
         categories, fetchCategories, createCategory, deleteCategory,
         accountsPayable, fetchAccountsPayable, createAccountPayable, deleteAccountPayable,
         accountsReceivable, fetchAccountsReceivable, createAccountReceivable, deleteAccountReceivable,
-        createFinance 
+        createFinance, updateFinance, deleteFinance 
     } = usePersistence();
 
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<any>(null);
     
     // Overview Form State
     const [concepto, setConcepto] = useState('');
@@ -79,18 +80,39 @@ export const FinanceView: React.FC = () => {
     const handleCreateTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await createFinance({
-                proyecto_id: Number(selectedProjectId),
-                concepto,
-                monto: Number(monto),
-                tipo_transaccion: tipo,
-                categoria,
-                fecha_transaccion: fecha
-            });
+            if (editingTransaction) {
+                await updateFinance(editingTransaction.id, {
+                    concepto,
+                    monto: Number(monto),
+                    tipo_transaccion: tipo,
+                    categoria,
+                    fecha_transaccion: fecha
+                });
+            } else {
+                await createFinance({
+                    proyecto_id: Number(selectedProjectId),
+                    concepto,
+                    monto: Number(monto),
+                    tipo_transaccion: tipo,
+                    categoria,
+                    fecha_transaccion: fecha
+                });
+            }
             setIsModalOpen(false);
+            setEditingTransaction(null);
             // Reset
             setConcepto(''); setMonto(''); setCategory('');
         } catch (err) { console.error(err); }
+    };
+
+    const handleEditClick = (t: any) => {
+        setEditingTransaction(t);
+        setConcepto(t.concepto);
+        setMonto(t.monto);
+        setTipo(t.tipo_transaccion);
+        setCategory(t.categoria);
+        setFecha(t.fecha_transaccion ? t.fecha_transaccion.split('T')[0] : new Date().toISOString().split('T')[0]); // Handle potentially iso string
+        setIsModalOpen(true);
     };
 
     // --- Categories Logic ---
@@ -197,6 +219,8 @@ export const FinanceView: React.FC = () => {
                 <button 
                     onClick={() => {
                          if (!selectedProjectId) return alert("Select a project first");
+                         setEditingTransaction(null);
+                         setConcepto(''); setMonto(''); setCategory('');
                          setIsModalOpen(true);
                     }}
                     disabled={!selectedProjectId}
@@ -234,7 +258,18 @@ export const FinanceView: React.FC = () => {
                                          </td>
                                          <td className="px-6 py-4">{t.categoria}</td>
                                          <td className="px-6 py-4 text-gray-500">{new Date(t.fecha_transaccion).toLocaleDateString()}</td>
-                                         <td className={`px-6 py-4 text-right font-medium ${t.tipo_transaccion === 'Ingreso' ? 'text-emerald-600' : 'text-gray-900'}`}>{formatCurrency(Number(t.monto))}</td>
+                                         <td className={`px-6 py-4 text-right font-medium ${t.tipo_transaccion === 'Ingreso' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                            <div className="flex items-center justify-end gap-3">
+                                                 {formatCurrency(Number(t.monto))}
+                                                 <button 
+                                                    onClick={() => handleEditClick(t)} 
+                                                    className="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors"
+                                                    title="Edit Transaction"
+                                                 >
+                                                     <Edit size={14} />
+                                                 </button>
+                                            </div>
+                                         </td>
                                      </tr>
                                  ))}
                              </tbody>
@@ -389,7 +424,7 @@ export const FinanceView: React.FC = () => {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-[fadeIn_0.2s_ease-out]">
                         <h2 className="text-lg font-bold mb-6 text-gray-800">
-                            {activeTab === 'overview' ? 'New Transaction' : activeTab === 'payable' ? 'New Bill' : 'New Invoice'}
+                            {activeTab === 'overview' ? (editingTransaction ? 'Edit Transaction' : 'New Transaction') : activeTab === 'payable' ? 'New Bill' : 'New Invoice'}
                         </h2>
                         
                         {activeTab === 'overview' ? (

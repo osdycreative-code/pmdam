@@ -140,8 +140,8 @@ export const TaskList: React.FC = () => {
              {/* Project Filter */}
              <div className="flex items-center gap-2">
                  <Briefcase size={16} className="text-gray-400"/>
-                 <select 
-                    className="text-sm border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+   <select 
+                    className="text-sm border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors cursor-pointer"
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : '')}
                     title="Filter by Project"
@@ -156,35 +156,35 @@ export const TaskList: React.FC = () => {
              <div className="flex bg-gray-100 p-0.5 rounded-lg">
                 <button 
                     onClick={() => setViewMode(ViewMode.LIST)}
-                    className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all duration-200 hover:border-gray-300 border border-transparent ${viewMode === ViewMode.LIST ? 'bg-white shadow-sm text-gray-900' : ''}`}
+                    className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all duration-200 hover:border-indigo-400 border border-transparent ${viewMode === ViewMode.LIST ? 'bg-white shadow-sm text-indigo-600' : ''}`}
                     title="List View"
                 >
                     <LayoutList size={16} />
                 </button>
                 <button 
                     onClick={() => setViewMode(ViewMode.TABLE)}
-                    className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all duration-200 hover:border-gray-300 border border-transparent ${viewMode === ViewMode.TABLE ? 'bg-white shadow-sm text-gray-900' : ''}`}
+                    className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all duration-200 hover:border-indigo-400 border border-transparent ${viewMode === ViewMode.TABLE ? 'bg-white shadow-sm text-indigo-600' : ''}`}
                     title="Table View"
                 >
                     <TableIcon size={16} />
                 </button>
                 <button 
                     onClick={() => setViewMode(ViewMode.BOARD)}
-                    className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all duration-200 hover:border-gray-300 border border-transparent ${viewMode === ViewMode.BOARD || viewMode === ViewMode.KANBAN ? 'bg-white shadow-sm text-gray-900' : ''}`}
+                    className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all duration-200 hover:border-indigo-400 border border-transparent ${viewMode === ViewMode.BOARD || viewMode === ViewMode.KANBAN ? 'bg-white shadow-sm text-indigo-600' : ''}`}
                     title="Board/Kanban View"
                 >
                     <KanbanSquare size={16} />
                 </button>
                 <button 
                     onClick={() => setViewMode(ViewMode.CALENDAR)}
-                    className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all duration-200 hover:border-gray-300 border border-transparent ${viewMode === ViewMode.CALENDAR ? 'bg-white shadow-sm text-gray-900' : ''}`}
+                    className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all duration-200 hover:border-indigo-400 border border-transparent ${viewMode === ViewMode.CALENDAR ? 'bg-white shadow-sm text-indigo-600' : ''}`}
                     title="Calendar View"
                 >
                     <CalendarIcon size={16} />
                 </button>
                 <button 
                     onClick={() => setViewMode(ViewMode.ACCORDION)}
-                    className={`p-1.5 rounded-md text-gray-500 hover:text-gray-900 transition-all duration-200 hover:border-gray-300 border border-transparent ${viewMode === ViewMode.ACCORDION ? 'bg-white shadow-sm text-gray-900' : ''}`}
+                    className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all duration-200 hover:border-indigo-400 border border-transparent ${viewMode === ViewMode.ACCORDION ? 'bg-white shadow-sm text-indigo-600' : ''}`}
                     title="Accordion View"
                 >
                     <ListTree size={16} />
@@ -206,7 +206,7 @@ export const TaskList: React.FC = () => {
                             type="text" 
                             placeholder={selectedProjectId ? "Add a new task to this project..." : "Select a project to add tasks"} 
                             disabled={!selectedProjectId}
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none text-sm shadow-sm disabled:bg-gray-50 disabled:text-gray-400"
+                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 hover:border-indigo-400 transition-all outline-none text-sm shadow-sm disabled:bg-gray-50 disabled:text-gray-400"
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
                         />
@@ -218,7 +218,7 @@ export const TaskList: React.FC = () => {
                         <div 
                             key={task.id} 
                             onClick={() => setEditingTask(task)}
-                            className="group flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md border border-gray-200 cursor-pointer transition-all duration-200 hover:border-indigo-200"
+                            className="group flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md border border-gray-200 cursor-pointer transition-all duration-200 hover:border-indigo-400"
                         >
                             <div className="flex items-center gap-33 overflow-hidden">
                                 <button className="shrink-0 pt-0.5">
@@ -281,7 +281,7 @@ export const TaskList: React.FC = () => {
                                         draggable
                                         onDragStart={(e) => onDragStart(e, task.id.toString())}
                                         onClick={() => setEditingTask(task)}
-                                        className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all"
+                                        className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-indigo-400"
                                       >
                                           <div className="flex justify-between items-start mb-2">
                                               <span className={`text-xs px-1.5 py-0.5 rounded ${getPriorityColor(task.prioridad)}`}>
@@ -332,7 +332,7 @@ export const TaskList: React.FC = () => {
                           );
 
                           return (
-                              <div key={idx} className="bg-white min-h-[8rem] p-2 hover:bg-gray-50 transition-colors">
+                              <div key={idx} className="bg-white min-h-[8rem] p-2 hover:bg-gray-50 transition-all border border-transparent hover:border-indigo-400 hover:shadow-sm relative group">
                                   <div className={`text-xs font-medium mb-1 ${date.toDateString() === new Date().toDateString() ? 'text-indigo-600' : 'text-gray-500'}`}>
                                       {date.getDate()}
                                   </div>
@@ -341,7 +341,7 @@ export const TaskList: React.FC = () => {
                                           <div 
                                               key={task.id}
                                               onClick={() => setEditingTask(task)}
-                                              className={`text-[10px] px-1.5 py-1 rounded truncate cursor-pointer ${task.estado === 'Terminado' ? 'bg-gray-100 text-gray-400 line-through' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}`}
+                                              className={`text-[10px] px-1.5 py-1 rounded truncate cursor-pointer transition-all hover:border-indigo-400 ${task.estado === 'Terminado' ? 'bg-gray-100 text-gray-400 line-through' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}`}
                                           >
                                               {task.titulo_tarea}
                                           </div>
@@ -509,7 +509,7 @@ export const TaskList: React.FC = () => {
                         <div key={status} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                             <button 
                                 onClick={() => setExpandedGroups(prev => ({ ...prev, [status]: !isExpanded }))}
-                                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-all border border-transparent hover:border-indigo-400 rounded-lg"
                             >
                                 <div className="flex items-center gap-2 font-medium text-gray-700 text-sm">
                                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -527,7 +527,7 @@ export const TaskList: React.FC = () => {
                                         <div 
                                             key={task.id} 
                                             onClick={() => setEditingTask(task)}
-                                            className="p-3 flex items-center justify-between hover:bg-gray-50 transition-colors group pl-9 cursor-pointer"
+                                            className="p-3 flex items-center justify-between hover:bg-gray-50 transition-all group pl-9 cursor-pointer border border-transparent hover:border-indigo-400 rounded-lg"
                                         >
                                            <div className="flex items-center gap-3">
                                                <span className={`text-sm ${task.estado === 'Terminado' ? 'text-gray-400 line-through' : 'text-gray-700'}`}>

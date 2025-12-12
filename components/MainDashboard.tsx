@@ -124,6 +124,13 @@ export const MainDashboard: React.FC = () => {
             .slice(0, 5);
     }, [tasks, projects]);
 
+    // Recent Transactions
+    const recentTransactions = useMemo(() => {
+        return transactions
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5);
+    }, [transactions]);
+
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('en-US', { 
             style: 'currency', 
@@ -194,25 +201,74 @@ export const MainDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Finance Card */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:border-emerald-200">
+                    {/* Finance Card - Recent Transactions */}
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:border-emerald-200 flex flex-col">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                                 <Wallet size={20} />
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                                financeSummary.balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-                            }`}>
-                                {financeSummary.balance >= 0 ? 'Positive' : 'Negative'}
+                            <span className="text-xs text-emerald-600 font-bold px-2 py-1 bg-emerald-50 rounded-full">
+                                This Week
                             </span>
                         </div>
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
-                            {formatCurrency(financeSummary.balance)}
+                        
+                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                           {(() => {
+                                // Get start and end of current week
+                                const now = new Date();
+                                const dayOfWeek = now.getDay(); // 0 (Sun) - 6 (Sat)
+                                const startOfWeek = new Date(now);
+                                startOfWeek.setDate(now.getDate() - dayOfWeek);
+                                startOfWeek.setHours(0, 0, 0, 0);
+                                
+                                const endOfWeek = new Date(startOfWeek);
+                                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                endOfWeek.setHours(23, 59, 59, 999);
+
+                                const weeklyTransactions = transactions
+                                    .filter(t => {
+                                        const tDate = new Date(t.date);
+                                        return tDate >= startOfWeek && tDate <= endOfWeek;
+                                    })
+                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                    .slice(0, 5); // Limit to top 5 for card view
+
+                                if (weeklyTransactions.length === 0) {
+                                    return (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-400 mt-2">
+                                            <p className="text-sm">No transactions this week</p>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="space-y-3">
+                                        {weeklyTransactions.map(t => (
+                                            <div key={t.id} className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <div className={`p-1.5 rounded-full shrink-0 ${t.type === TransactionType.INCOME ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
+                                                        {t.type === TransactionType.INCOME ? <ArrowRight size={12} className="-rotate-45" /> : <ArrowRight size={12} className="rotate-45" />}
+                                                    </div>
+                                                    <div className="truncate">
+                                                        <div className="font-medium text-gray-900 truncate">{t.description}</div>
+                                                        <div className="text-[10px] text-gray-500">{new Date(t.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</div>
+                                                    </div>
+                                                </div>
+                                                <div className={`font-bold whitespace-nowrap ${t.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {t.type === TransactionType.INCOME ? '+' : '-'}{formatCurrency(t.amount)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                           })()}
                         </div>
-                        <div className="text-sm text-gray-500 mb-4">Net Balance</div>
-                        <div className="flex items-center text-xs text-gray-500">
-                            <span className="flex-1">Income: {formatCurrency(financeSummary.income)}</span>
-                        </div>
+                         <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+                             <span>Balance:</span>
+                             <span className={`font-bold ${financeSummary.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                 {formatCurrency(financeSummary.balance)}
+                             </span>
+                         </div>
                     </div>
                 </div>
 
@@ -368,65 +424,43 @@ export const MainDashboard: React.FC = () => {
 
                     {/* Right Column - Finance & Quick Stats */}
                     <div className="space-y-8">
-                        {/* Finance Section */}
+                        {/* Recent Transactions */}
                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:border-emerald-200">
                             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                                 <h2 className="font-bold text-gray-800 flex items-center gap-2">
-                                    <Wallet size={18} className="text-emerald-600" /> Financial Overview
+                                    <Wallet size={18} className="text-emerald-600" /> My Last Transactions
                                 </h2>
                             </div>
                             
-                            {/* Balance Summary */}
                             <div className="p-6">
-                                <div className="text-center mb-6">
-                                    <div className="text-3xl font-bold text-gray-900 mb-1">
-                                        {formatCurrency(financeSummary.balance)}
-                                    </div>
-                                    <div className="text-sm text-gray-500">Current Balance</div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <div className="bg-green-50 p-4 rounded-lg">
-                                        <div className="text-lg font-bold text-green-700">
-                                            {formatCurrency(financeSummary.income)}
-                                        </div>
-                                        <div className="text-xs text-green-600 flex items-center gap-1">
-                                            <ArrowRight size={12} className="rotate-90" /> Income
-                                        </div>
-                                    </div>
-                                    <div className="bg-red-50 p-4 rounded-lg">
-                                        <div className="text-lg font-bold text-red-700">
-                                            {formatCurrency(financeSummary.expenses)}
-                                        </div>
-                                        <div className="text-xs text-red-600 flex items-center gap-1">
-                                            <ArrowRight size={12} className="rotate-[-90deg]" /> Expenses
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Top Expense Categories */}
-                                {financeSummary.topExpenses.length > 0 && (
-                                    <div>
-                                        <h3 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                                            <PieChart size={16} className="text-purple-500" /> Top Expenses
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {financeSummary.topExpenses.map((expense, index) => (
-                                                <div key={index} className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                                                        <span className="text-sm text-gray-700">{expense.category}</span>
+                                {recentTransactions.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {recentTransactions.map(transaction => (
+                                            <div key={transaction.id} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-lg ${transaction.type === TransactionType.INCOME ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                                        {transaction.type === TransactionType.INCOME ? <ArrowRight size={16} className="rotate-[-45deg]" /> : <ArrowRight size={16} className="rotate-[45deg]" />}
                                                     </div>
-                                                    <span className="text-sm font-medium text-gray-900">
-                                                        {formatCurrency(expense.amount)}
-                                                    </span>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{transaction.description}</div>
+                                                        <div className="text-xs text-gray-500">{new Date(transaction.date).toLocaleDateString()}</div>
+                                                    </div>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <div className={`text-sm font-bold ${transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {transaction.type === TransactionType.INCOME ? '+' : '-'}{formatCurrency(transaction.amount)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-gray-400 py-6">
+                                        <Wallet size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No recent transactions</p>
                                     </div>
                                 )}
                             </div>
                         </div>
+
 
                         {/* Quick Stats */}
                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl shadow-md p-6 text-white">

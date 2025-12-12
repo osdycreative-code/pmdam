@@ -147,6 +147,11 @@ export const FinanceAPI = {
         return { ...transaction, id } as RegistroFinanzas;
     },
 
+    update: async (id: number, updates: Partial<RegistroFinanzas>) => {
+        await dbLocal.finance.update(id, updates);
+        return { id, ...updates } as RegistroFinanzas;
+    },
+
     delete: async (id: number) => {
         await dbLocal.finance.delete(id);
     }
