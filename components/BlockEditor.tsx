@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Block, BlockType } from '../types';
-import { GripVertical, Plus, Type, CheckSquare, Trash2, Wand2, Bold, Italic, Underline, MoreHorizontal } from 'lucide-react';
+import { GripVertical, Plus, Type, CheckSquare, Trash2, Wand2, Bold, Italic, Underline, MoreHorizontal, Copy, Check, Strikethrough } from 'lucide-react';
 import { polishText } from '../services/geminiService';
 
 interface BlockEditorProps {
@@ -18,6 +18,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
+  const [copied, setCopied] = useState(false);
   
   const editorRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -232,6 +233,21 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
       }
   }
 
+  const handleCopyPage = () => {
+      const allText = blocks.map(b => {
+          if(b.type === BlockType.TODO) return `[${b.checked ? 'x' : ' '}] ${b.content}`;
+          if(b.type === BlockType.BULLET) return `- ${b.content}`;
+          if(b.type === BlockType.HEADING_1) return `# ${b.content}`;
+          if(b.type === BlockType.HEADING_2) return `## ${b.content}`;
+          return b.content;
+      }).join('\n\n');
+
+      navigator.clipboard.writeText(allText).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+      });
+  };
+
   // Render a single block based on its type
   const renderBlock = (block: Block) => {
     const isActive = activeBlockId === block.id;
@@ -397,8 +413,20 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
               <button onClick={() => execFormat('bold')} className="p-1.5 hover:bg-gray-700 rounded transition-all duration-200 hover:border-gray-600 border border-transparent"><Bold size={14}/></button>
               <button onClick={() => execFormat('italic')} className="p-1.5 hover:bg-gray-700 rounded transition-all duration-200 hover:border-gray-600 border border-transparent"><Italic size={14}/></button>
               <button onClick={() => execFormat('underline')} className="p-1.5 hover:bg-gray-700 rounded transition-all duration-200 hover:border-gray-600 border border-transparent"><Underline size={14}/></button>
+              <button onClick={() => execFormat('strikeThrough')} className="p-1.5 hover:bg-gray-700 rounded transition-all duration-200 hover:border-gray-600 border border-transparent"><Strikethrough size={14}/></button>
           </div>
       )}
+
+      {/* Editor Header Actions */}
+      <div className="absolute top-[-40px] right-0 flex gap-2">
+         <button 
+            onClick={handleCopyPage} 
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+         >
+            {copied ? <Check size={14} className="text-green-600"/> : <Copy size={14} />}
+            {copied ? <span className="text-green-600">Copied!</span> : "Copy Page"}
+         </button>
+      </div>
       
       {blocks.map((block) => (
         <div key={block.id} className="group relative flex items-start gap-2">
