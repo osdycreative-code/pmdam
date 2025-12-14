@@ -116,3 +116,30 @@ export const generateColoringPage = async (prompt: string): Promise<string | nul
         return null;
     }
 }
+
+export const generateManual = async (topic: string): Promise<string> => {
+    if(!apiKey) return "API Key missing.";
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `
+                You are an expert technical writer.
+                Create a comprehensive user manual or guide for the following topic: "${topic}".
+                
+                Structure the output with:
+                1. Title
+                2. Introduction
+                3. Prerequisites (if applicable)
+                4. Step-by-step Instructions / Sections
+                5. Troubleshooting / FAQ
+                6. Conclusion
+
+                Use clean Markdown formatting. Use bolding for emphasis and code blocks if technical steps are involved.
+            `
+        });
+        return response.text || '';
+    } catch(e) {
+        console.error(e);
+        return "Failed to generate manual.";
+    }
+}
