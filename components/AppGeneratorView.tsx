@@ -6,34 +6,47 @@ export const AppGeneratorView: React.FC = () => {
     
     // Form State
     const [appName, setAppName] = useState('');
-    const [appType, setAppType] = useState('Web App (React)');
-    const [theme, setTheme] = useState('Modern Light');
-    const [features, setFeatures] = useState<string[]>([]);
+    const [appType, setAppType] = useState('React + Vite');
+    const [dbType, setDbType] = useState('');
     const [description, setDescription] = useState('');
+    
+    // Tooling State
+    const [useTypescript, setUseTypescript] = useState(true);
+    const [useTailwind, setUseTailwind] = useState(true);
+    const [useLinting, setUseLinting] = useState(true);
+    const [useGit, setUseGit] = useState(true);
     
     // Generation State
     const [result, setResult] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
 
-    const toggleFeature = (feat: string) => {
-        setFeatures(prev => prev.includes(feat) ? prev.filter(f => f !== feat) : [...prev, feat]);
-    };
-
     const handleGenerate = async () => {
-        if(!appName.trim() && !description.trim()) return;
+        if(!appName.trim()) return;
         setIsGenerating(true);
         setResult(null);
 
         // Construct structured prompt
         const prompt = `
-            Create a ${appType} named "${appName}".
-            Theme Style: ${theme}.
-            Key Features to include: ${features.join(', ') || 'Standard features'}.
+            Create a project configuration and initial code structure for:
+            Project Name: "${appName}"
+            Type/Framework: ${appType}
+            ${(appType === 'DataBase' || appType.includes('FullStack')) ? `Database: ${dbType || 'Not specified'}` : ''}
             
-            Detailed Description:
-            ${description}
+            Configuration:
+            - TypeScript: ${useTypescript ? 'Yes' : 'No'}
+            - Tailwind CSS: ${useTailwind ? 'Yes' : 'No'}
+            - ESLint + Prettier: ${useLinting ? 'Yes' : 'No'}
+            - Initialize Git: ${useGit ? 'Yes' : 'No'}
+            
+            Additional Requirements:
+            ${description || 'Standard best practices implementation.'}
 
-            Please provide the complete source code structure, focusing on the main entry point and key components.
+            Please provide the following:
+            1. Recommended folder structure.
+            2. package.json configuration with these specific dependencies.
+            3. Main entry file content (e.g., main.tsx, index.ts).
+            4. If a Database is selected, provide the connection setup or schema initialization.
+            5. A brief guide on how to run this project.
         `;
 
         try {
@@ -45,11 +58,6 @@ export const AppGeneratorView: React.FC = () => {
             setIsGenerating(false);
         }
     };
-
-    const featureOptions = [
-        "User Authentication", "Database Integration", "Dark Mode", "Dashboard", 
-        "Payment Gateway", "File Upload", "Real-time Chat", "Analytics Charts"
-    ];
 
     return (
         <div className="flex flex-col h-full bg-white">
@@ -86,9 +94,18 @@ export const AppGeneratorView: React.FC = () => {
 
                         {/* App Type */}
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Platform / Framework</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Project Type</label>
                             <div className="grid grid-cols-2 gap-3">
-                                {['Web App (React)', 'Mobile App (React Native)', 'API Service (Node.js)', 'Static Site (HTML/CSS)'].map(type => (
+                                {[
+                                    'React + Vite', 
+                                    'Vue 3 + Vite', 
+                                    'Svelte + Vite', 
+                                    'Astro',
+                                    'SolidJS',
+                                    'Qwik',
+                                    'FullStack (Express + DB)',
+                                    'DataBase'
+                                ].map(type => (
                                     <button
                                         key={type}
                                         onClick={() => setAppType(type)}
@@ -100,51 +117,97 @@ export const AppGeneratorView: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Theme */}
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Visual Theme</label>
-                            <div className="relative">
-                                <Palette className="absolute left-3 top-3 text-gray-400" size={18}/>
-                                <select 
-                                    title="Visual Theme"
-                                    aria-label="Visual Theme"
-                                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none shadow-sm cursor-pointer"
-                                    value={theme}
-                                    onChange={e => setTheme(e.target.value)}
-                                >
-                                    <option>Modern Light</option>
-                                    <option>Sleek Dark</option>
-                                    <option>Corporate Blue</option>
-                                    <option>Vibrant Creative</option>
-                                    <option>Minimalist Monochrome</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Features */}
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Key Features</label>
-                            <div className="flex flex-wrap gap-2">
-                                {featureOptions.map(feat => (
-                                    <button
-                                        key={feat}
-                                        onClick={() => toggleFeature(feat)}
-                                        className={`text-xs px-3 py-2 rounded-full border transition-all flex items-center gap-1.5 ${features.includes(feat) ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                        {/* Database Selection (Conditional) */}
+                        {(appType === 'DataBase' || appType === 'FullStack (Express + DB)') && (
+                            <div className="animate-[fadeIn_0.3s_ease-out]">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Database Engine</label>
+                                <div className="relative">
+                                    <Server className="absolute left-3 top-3 text-gray-400" size={18}/>
+                                    <select 
+                                        title="Select Database"
+                                        aria-label="Select Database Engine"
+                                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none shadow-sm cursor-pointer"
+                                        value={dbType}
+                                        onChange={e => setDbType(e.target.value)}
                                     >
-                                        {features.includes(feat) && <Check size={12}/>} {feat}
-                                    </button>
-                                ))}
+                                        <option value="">Select Database...</option>
+                                        <option value="PostgreSQL">PostgreSQL</option>
+                                        <option value="MongoDB">MongoDB</option>
+                                        <option value="MySQL">MySQL</option>
+                                        <option value="Supabase">Supabase</option>
+                                        <option value="Firebase">Firebase</option>
+                                        <option value="SQLite">SQLite</option>
+                                        <option value="MariaDB">MariaDB</option>
+                                        <option value="Redis">Redis</option>
+                                        <option value="DynamoDB">AWS DynamoDB</option>
+                                        <option value="MSSQL">Microsoft SQL Server</option>
+                                        <option value="Oracle">Oracle DB</option>
+                                        <option value="PlanetScale">PlanetScale</option>
+                                        <option value="Neon">Neon (Serverless Postgres)</option>
+                                        <option value="Convex">Convex</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tooling Options */}
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3">Tooling & Configuration</label>
+                            <div className="grid grid-cols-1 gap-3">
+                                <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:border-blue-300 transition-all select-none">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-blue-100 rounded-md text-blue-600 font-bold text-xs">TS</div>
+                                        <span className="text-sm font-medium text-gray-700">TypeScript</span>
+                                    </div>
+                                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${useTypescript ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useTypescript ? 'translate-x-4' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={useTypescript} onChange={() => setUseTypescript(!useTypescript)} />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:border-blue-300 transition-all select-none">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-cyan-100 rounded-md text-cyan-600 font-bold text-xs">TW</div>
+                                        <span className="text-sm font-medium text-gray-700">Tailwind CSS</span>
+                                    </div>
+                                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${useTailwind ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useTailwind ? 'translate-x-4' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={useTailwind} onChange={() => setUseTailwind(!useTailwind)} />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:border-blue-300 transition-all select-none">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-purple-100 rounded-md text-purple-600 font-bold text-xs">ES</div>
+                                        <span className="text-sm font-medium text-gray-700">ESLint + Prettier</span>
+                                    </div>
+                                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${useLinting ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useLinting ? 'translate-x-4' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={useLinting} onChange={() => setUseLinting(!useLinting)} />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:border-blue-300 transition-all select-none">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-1.5 bg-orange-100 rounded-md text-orange-600 font-bold text-xs">GIT</div>
+                                        <span className="text-sm font-medium text-gray-700">Initialize Git</span>
+                                    </div>
+                                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors ${useGit ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${useGit ? 'translate-x-4' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={useGit} onChange={() => setUseGit(!useGit)} />
+                                </label>
                             </div>
                         </div>
 
-                        {/* Detailed Description */}
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Specific Requirements</label>
+                         {/* Specific Description */}
+                         <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Additional Details</label>
                             <textarea 
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe specific business logic, data models, or particular functionality you need..."
-                                className="w-full h-32 p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm bg-white shadow-sm transition-all"
+                                placeholder="Any specific requirements, structure preferences, or business logic..."
+                                className="w-full h-24 p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm bg-white shadow-sm transition-all"
                             />
                         </div>
 

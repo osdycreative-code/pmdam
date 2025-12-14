@@ -18,7 +18,7 @@ import { PersistenceProvider } from './src/context/CentralizedPersistenceContext
 import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable } from './types';
 import { Bell, X, Loader2, Menu } from 'lucide-react';
 import { dbService, STORES } from './services/db';
-import { supabase } from './services/supabaseClient';
+import { supabase, deleteAllSupabaseData } from './services/supabaseClient';
 
 // Simple Store Context
 interface StoreContextType {
@@ -235,6 +235,7 @@ const App: React.FC = () => {
   const resetData = async () => {
       if(window.confirm("This will delete the local database and all accounts. Are you sure?")) {
           setIsDbLoading(true);
+          await deleteAllSupabaseData(); // Clear Cloud Data
           await dbService.clearDatabase();
           
           // Reinitialize the database without loading mock data

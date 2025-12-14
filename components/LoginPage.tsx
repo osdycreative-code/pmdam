@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Hexagon, Loader2, AlertCircle, ArrowRight, Github, Mail } from 'lucide-react';
 import { dbLocal } from '../services/dexieDb';
-import { supabase } from '../services/supabaseClient';
+import { supabase, deleteAllSupabaseData } from '../services/supabaseClient';
 import Dexie from 'dexie';
 
 interface LoginPageProps {
@@ -318,8 +318,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
       
-      <div className="mt-8 text-center text-gray-400 text-[10px] uppercase tracking-widest font-medium">
+      <div className="mt-8 text-center text-gray-400 text-[10px] uppercase tracking-widest font-medium group">
          Secured by NexusFlow
+         <button 
+            type="button" 
+            onClick={async () => {
+                if (window.confirm("⚠️ HARD RESET: This will wipe ALL LOCAL and CLOUD data. Are you sure?")) {
+                    try {
+                        await deleteAllSupabaseData(); // Clean cloud
+                        await Dexie.delete('PManLocalDB'); // Clean local Dexie
+                        await dbLocal.delete();
+                        console.log("Database reset complete. Reloading...");
+                        window.location.reload();
+                    } catch (e) {
+                         console.error("Reset failed", e);
+                         alert("Reset failed, check console");
+                    }
+                }
+            }} 
+            className="block mx-auto mt-4 px-2 py-1 bg-red-100 text-red-600 rounded text-[9px] opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+            title="Dev: Wipe All Data"
+         >
+            Reset DB (Click to Wipe)
+         </button>
       </div>
     </div>
   );

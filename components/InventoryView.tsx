@@ -22,8 +22,13 @@ export const InventoryView: React.FC = () => {
     const [newCategories, setNewCategories] = useState<string[]>([]);
 
     // Catalog State (In-memory for now, could be persisted)
-    const [brandCatalog, setBrandCatalog] = useState<string[]>(['Generic', 'Acme', 'Premium']);
-    const [modelCatalog, setModelCatalog] = useState<string[]>(['Standard', 'Pro', 'Elite']);
+    const [brandCatalog, setBrandCatalog] = useState<string[]>(['Generic', 'Acme', 'Premium', 'Nissan']);
+    const [modelCatalog, setModelCatalog] = useState<Record<string, string[]>>({
+        'Generic': ['Standard', 'Pro'],
+        'Acme': ['Light', 'Heavy'],
+        'Premium': ['Elite', 'Gold'],
+        'Nissan': ['Sentra', 'Versa', 'Altima', 'Kicks']
+    });
     const [categoryCatalog, setCategoryCatalog] = useState<string[]>(['Electronics', 'Office', 'Furniture', 'Raw Materials']);
     
     // Catalog Management State
@@ -105,15 +110,33 @@ export const InventoryView: React.FC = () => {
     // Catalog Helpers
     const addToCatalog = (type: 'brand' | 'model' | 'category') => {
         if (!catalogItemInput.trim()) return;
-        if (type === 'brand') setBrandCatalog(prev => [...prev, catalogItemInput]);
-        if (type === 'model') setModelCatalog(prev => [...prev, catalogItemInput]);
+        if (type === 'brand') {
+            setBrandCatalog(prev => [...prev, catalogItemInput]);
+            setModelCatalog(prev => ({ ...prev, [catalogItemInput]: [] }));
+        }
+        if (type === 'model') {
+            if (!newBrand) {
+                alert("Please select a brand first.");
+                return;
+            }
+            setModelCatalog(prev => ({
+                ...prev, 
+                [newBrand]: [...(prev[newBrand] || []), catalogItemInput]
+            }));
+        }
         if (type === 'category') setCategoryCatalog(prev => [...prev, catalogItemInput]);
         setCatalogItemInput('');
     };
 
     const removeFromCatalog = (type: 'brand' | 'model' | 'category', item: string) => {
         if (type === 'brand') setBrandCatalog(prev => prev.filter(i => i !== item));
-        if (type === 'model') setModelCatalog(prev => prev.filter(i => i !== item));
+        if (type === 'model') {
+            if (!newBrand) return;
+            setModelCatalog(prev => ({
+                ...prev,
+                [newBrand]: (prev[newBrand] || []).filter(i => i !== item)
+            }));
+        }
         if (type === 'category') setCategoryCatalog(prev => prev.filter(i => i !== item));
     };
 
@@ -267,7 +290,10 @@ export const InventoryView: React.FC = () => {
                                         aria-label="Select Brand"
                                         className="w-full border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-gray-50 focus:bg-white transition-all"
                                         value={newBrand}
-                                        onChange={e => setNewBrand(e.target.value)}
+                                        onChange={e => {
+                                            setNewBrand(e.target.value);
+                                            setNewModel('');
+                                        }}
                                     >
                                         <option value="">Select Brand...</option>
                                         {brandCatalog.map(b => <option key={b} value={b}>{b}</option>)}
@@ -286,9 +312,10 @@ export const InventoryView: React.FC = () => {
                                         className="w-full border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-gray-50 focus:bg-white transition-all"
                                         value={newModel}
                                         onChange={e => setNewModel(e.target.value)}
+                                        disabled={!newBrand}
                                     >
-                                        <option value="">Select Model...</option>
-                                        {modelCatalog.map(m => <option key={m} value={m}>{m}</option>)}
+                                        <option value="">{newBrand ? "Select Model..." : "Select Brand First"}</option>
+                                        {(newBrand && modelCatalog[newBrand] ? modelCatalog[newBrand] : []).map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
                                 </div>
 
@@ -346,7 +373,8 @@ export const InventoryView: React.FC = () => {
                                 <div className="flex gap-2 mb-3">
                                     <input 
                                         autoFocus
-                                        className="flex-1 border border-gray-300 rounded text-sm px-2 py-1.5 focus:ring-2 focus:ring-indigo-500" 
+                                        disabled={managingCatalog === 'model' && !newBrand}
+                                        className={`flex-1 border border-gray-300 rounded text-sm px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 ${managingCatalog === 'model' && !newBrand ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
                                         placeholder={`New ${managingCatalog}...`}
                                         value={catalogItemInput}
                                         onChange={e => setCatalogItemInput(e.target.value)}
@@ -357,7 +385,7 @@ export const InventoryView: React.FC = () => {
                                     </button>
                                 </div>
                                 <div className="max-h-40 overflow-y-auto space-y-1">
-                                    {(managingCatalog === 'brand' ? brandCatalog : managingCatalog === 'model' ? modelCatalog : categoryCatalog).map(item => (
+                                    {(managingCatalog === 'brand' ? brandCatalog : managingCatalog === 'model' ? (newBrand ? (modelCatalog[newBrand] || []) : []) : categoryCatalog).map(item => (
                                         <div key={item} className="flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded group">
                                             <span>{item}</span>
                                             <button onClick={() => removeFromCatalog(managingCatalog!, item)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
