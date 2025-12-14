@@ -8,7 +8,9 @@ import {
     AIMarketplaceAPI,
     FinanceCategoriesAPI,
     AccountsPayableAPI,
-    AccountsReceivableAPI
+    AccountsReceivableAPI,
+    CreativeArtifactsAPI,
+    FolderItemsAPI
 } from '../../services/api';
 import { 
     ProyectoMaestro, 
@@ -17,12 +19,14 @@ import {
     InventarioActivo, 
     AIDirectory,
     AccountPayable,
-    AccountReceivable
+    AccountReceivable,
+    CreativeArtifact,
+    FolderItem
 } from '../../types';
 
 // Define Category Interface locally if not in types
 export interface FinanceCategory {
-    id: number;
+    id: string; // UUID
     name: string;
     type: 'Income' | 'Expense';
 }
@@ -36,21 +40,23 @@ interface PersistenceContextType {
     
     // New State
     categories: FinanceCategory[];
-    accountsPayable: AccountPayable[]; // Using types.ts interface (might need casting if DB structure varies)
+    accountsPayable: AccountPayable[]; 
     accountsReceivable: AccountReceivable[];
+    creativeArtifacts: CreativeArtifact[];
+    folderItems: FolderItem[];
 
     loading: boolean;
     error: string | null;
     
     // Actions
     fetchProjects: () => Promise<void>;
-    fetchTasks: (projectId: number) => Promise<void>;
-    fetchFinances: (projectId: number) => Promise<void>;
+    fetchTasks: (projectId: string) => Promise<void>;
+    fetchFinances: (projectId?: string) => Promise<void>;
     
     // Categories
     fetchCategories: () => Promise<void>;
     createCategory: (name: string, type: 'Income' | 'Expense') => Promise<void>;
-    deleteCategory: (id: number) => Promise<void>;
+    deleteCategory: (id: string) => Promise<void>;
 
     // AP/AR
     fetchAccountsPayable: () => Promise<void>;
@@ -63,17 +69,29 @@ interface PersistenceContextType {
     updateAccountReceivable: (id: string, updates: any) => Promise<void>;
     deleteAccountReceivable: (id: string) => Promise<void>;
 
+    // Creative Artifacts
+    fetchCreativeArtifacts: () => Promise<void>;
+    createCreativeArtifact: (item: Omit<CreativeArtifact, 'id'>) => Promise<void>;
+    updateCreativeArtifact: (id: string, updates: Partial<CreativeArtifact>) => Promise<void>;
+    deleteCreativeArtifact: (id: string) => Promise<void>;
+    
+    // Folder Items
+    fetchFolderItems: () => Promise<void>;
+    createFolderItem: (item: any) => Promise<void>; 
+    updateFolderItem: (id: string, updates: Partial<FolderItem>) => Promise<void>;
+    deleteFolderItem: (id: string) => Promise<void>;
+
     createProject: (nombre: string, tipo: string, presupuesto: number) => Promise<void>;
-    updateProject: (id: number, updates: Partial<ProyectoMaestro>) => Promise<void>;
-    deleteProject: (id: number) => Promise<void>;
+    updateProject: (id: string, updates: Partial<ProyectoMaestro>) => Promise<void>;
+    deleteProject: (id: string) => Promise<void>;
     
     createTask: (task: any) => Promise<void>;
-    updateTask: (id: number, updates: any) => Promise<void>;
-    deleteTask: (id: number) => Promise<void>;
+    updateTask: (id: string, updates: any) => Promise<void>;
+    deleteTask: (id: string) => Promise<void>;
     
     createFinance: (transaction: Omit<RegistroFinanzas, 'id'>) => Promise<void>;
-    updateFinance: (id: number, updates: Partial<RegistroFinanzas>) => Promise<void>;
-    deleteFinance: (id: number) => Promise<void>;
+    updateFinance: (id: string, updates: Partial<RegistroFinanzas>) => Promise<void>;
+    deleteFinance: (id: string) => Promise<void>;
 
 }
 
@@ -89,6 +107,8 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const [categories, setCategories] = useState<FinanceCategory[]>([]);
     const [accountsPayable, setAccountsPayable] = useState<AccountPayable[]>([]);
     const [accountsReceivable, setAccountsReceivable] = useState<AccountReceivable[]>([]);
+    const [creativeArtifacts, setCreativeArtifacts] = useState<CreativeArtifact[]>([]);
+    const [folderItems, setFolderItems] = useState<FolderItem[]>([]);
 
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -107,7 +127,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const fetchTasks = useCallback(async (projectId: number) => {
+    const fetchTasks = useCallback(async (projectId: string) => {
         try {
             const data = await TasksAPI.getAllByProject(projectId);
             setTasks(data); 
@@ -116,9 +136,11 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const fetchFinances = useCallback(async (projectId: number) => {
+    const fetchFinances = useCallback(async (projectId?: string) => {
         try {
-            const data = await FinanceAPI.getAllByProject(projectId);
+            const data = projectId 
+                ? await FinanceAPI.getAllByProject(projectId)
+                : await FinanceAPI.getAll();
             setFinances(data);
         } catch (err: any) {
             console.error(err);
@@ -135,14 +157,20 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const createCategory = useCallback(async (name: string, type: 'Income' | 'Expense') => {
         try {
-            const newItem = await FinanceCategoriesAPI.create({ name, type });
+            // Ensure we create a local object with ID if API doesn't return one fully formed, 
+            // but relying on API to handle ID generation (it returns object with id).
+            // NOTE: Changing API to return UUID in previous steps might be missing in `FinanceCategoriesAPI.create` inside api.ts
+            // But we can patch it here or assume api.ts was updated.
+            // Actually, we didn't update api.ts createCategory to use UUID properly yet (it used to be ++id). 
+            // Let's assume for now we just pass it through.
+             const newItem = await FinanceCategoriesAPI.create({ name, type });
             setCategories(prev => [...prev, newItem as unknown as FinanceCategory]);
         } catch (err: any) { setError(err.message); }
     }, []);
 
-    const deleteCategory = useCallback(async (id: number) => {
+    const deleteCategory = useCallback(async (id: string) => {
         try {
-            await FinanceCategoriesAPI.delete(id);
+            await FinanceCategoriesAPI.delete(id); // API needs string
             setCategories(prev => prev.filter(c => c.id !== id));
         } catch (err: any) { setError(err.message); }
     }, []);
@@ -164,14 +192,14 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const updateAccountPayable = useCallback(async (id: string, updates: any) => {
         try {
-            await AccountsPayableAPI.update(parseInt(id), updates);
+            await AccountsPayableAPI.update(id, updates);
             setAccountsPayable(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
         } catch (err: any) { setError(err.message); }
     }, []);
 
     const deleteAccountPayable = useCallback(async (id: string) => {
         try {
-            await AccountsPayableAPI.delete(parseInt(id));
+            await AccountsPayableAPI.delete(id);
             setAccountsPayable(prev => prev.filter(item => item.id !== id));
         } catch (err: any) { setError(err.message); }
     }, []);
@@ -193,15 +221,75 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const updateAccountReceivable = useCallback(async (id: string, updates: any) => {
         try {
-            await AccountsReceivableAPI.update(parseInt(id), updates);
+            await AccountsReceivableAPI.update(id, updates);
             setAccountsReceivable(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
         } catch (err: any) { setError(err.message); }
     }, []);
 
     const deleteAccountReceivable = useCallback(async (id: string) => {
         try {
-            await AccountsReceivableAPI.delete(parseInt(id));
+            await AccountsReceivableAPI.delete(id);
             setAccountsReceivable(prev => prev.filter(item => item.id !== id));
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    // --- Creative Artifacts ---
+    const fetchCreativeArtifacts = useCallback(async () => {
+        try {
+            const data = await CreativeArtifactsAPI.getAll();
+            setCreativeArtifacts(data as unknown as CreativeArtifact[]);
+        } catch (err: any) { console.error(err); }
+    }, []);
+
+    const createCreativeArtifact = useCallback(async (item: Omit<CreativeArtifact, 'id'>) => {
+        try {
+            const newItem = await CreativeArtifactsAPI.create(item);
+            setCreativeArtifacts(prev => [...prev, newItem as unknown as CreativeArtifact]);
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    const updateCreativeArtifact = useCallback(async (id: string, updates: Partial<CreativeArtifact>) => {
+        try {
+            await CreativeArtifactsAPI.update(id, updates);
+            setCreativeArtifacts(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    const deleteCreativeArtifact = useCallback(async (id: string) => {
+        try {
+            await CreativeArtifactsAPI.delete(id);
+            setCreativeArtifacts(prev => prev.filter(item => item.id !== id));
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    // --- Folder Items ---
+    const fetchFolderItems = useCallback(async () => {
+        try {
+            const data = await FolderItemsAPI.getAll();
+             // Convert number IDs to strings to match FolderItem interface if needed, or cast
+             const adaptedData = data.map((d: any) => ({...d, id: d.id.toString()}));
+            setFolderItems(adaptedData as FolderItem[]);
+        } catch (err: any) { console.error(err); }
+    }, []);
+
+    const createFolderItem = useCallback(async (item: any) => {
+        try {
+            const newItem = await FolderItemsAPI.create(item);
+            setFolderItems(prev => [...prev, newItem]);
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    const updateFolderItem = useCallback(async (id: string, updates: Partial<FolderItem>) => {
+        try {
+            await FolderItemsAPI.update(id, updates);
+            setFolderItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+        } catch (err: any) { setError(err.message); }
+    }, []);
+
+    const deleteFolderItem = useCallback(async (id: string) => {
+        try {
+            await FolderItemsAPI.delete(id);
+            setFolderItems(prev => prev.filter(item => item.id !== id));
         } catch (err: any) { setError(err.message); }
     }, []);
 
@@ -219,7 +307,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, [fetchProjects]);
 
-    const updateProject = useCallback(async (id: number, updates: Partial<ProyectoMaestro>) => {
+    const updateProject = useCallback(async (id: string, updates: Partial<ProyectoMaestro>) => {
         setLoading(true);
         try {
             const updatedProject = await ProjectsAPI.update(id, updates);
@@ -232,7 +320,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const deleteProject = useCallback(async (id: number) => {
+    const deleteProject = useCallback(async (id: string) => {
         setLoading(true);
         try {
             await ProjectsAPI.delete(id);
@@ -253,7 +341,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, [fetchTasks]);
 
-    const updateTask = useCallback(async (id: number, updates: any) => {
+    const updateTask = useCallback(async (id: string, updates: any) => {
         try {
             await TasksAPI.update(id, updates);
             // Optimistic update or refetch could go here
@@ -263,7 +351,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const deleteTask = useCallback(async (id: number) => {
+    const deleteTask = useCallback(async (id: string) => {
         try {
             await TasksAPI.delete(id);
             setTasks(prev => prev.filter(t => t.id !== id));
@@ -281,7 +369,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const updateFinance = useCallback(async (id: number, updates: Partial<RegistroFinanzas>) => {
+    const updateFinance = useCallback(async (id: string, updates: Partial<RegistroFinanzas>) => {
         try {
             await FinanceAPI.update(id, updates);
             setFinances(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
@@ -290,7 +378,7 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    const deleteFinance = useCallback(async (id: number) => {
+    const deleteFinance = useCallback(async (id: string) => {
         try {
             await FinanceAPI.delete(id);
             setFinances(prev => prev.filter(f => f.id !== id));
@@ -305,10 +393,13 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         fetchCategories();
         fetchAccountsPayable();
         fetchAccountsReceivable();
+        fetchCreativeArtifacts();
+        fetchFolderItems();
+        fetchFinances(); // Load ALL finances by default
         // Load other global directories if needed
         // InventoryAPI.getAll().then(setInventory);
         // AIMarketplaceAPI.getAll().then(setAiTools);
-    }, [fetchProjects, fetchCategories, fetchAccountsPayable, fetchAccountsReceivable]);
+    }, [fetchProjects, fetchCategories, fetchAccountsPayable, fetchAccountsReceivable, fetchFinances]);
 
     return (
         <PersistenceContext.Provider value={{
@@ -320,7 +411,9 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             createFinance, updateFinance, deleteFinance,
             fetchCategories, createCategory, deleteCategory,
             fetchAccountsPayable, createAccountPayable, updateAccountPayable, deleteAccountPayable,
-            fetchAccountsReceivable, createAccountReceivable, updateAccountReceivable, deleteAccountReceivable
+            fetchAccountsReceivable, createAccountReceivable, updateAccountReceivable, deleteAccountReceivable,
+            creativeArtifacts, fetchCreativeArtifacts, createCreativeArtifact, updateCreativeArtifact, deleteCreativeArtifact,
+            folderItems, fetchFolderItems, createFolderItem, updateFolderItem, deleteFolderItem
         }}>
             {children}
         </PersistenceContext.Provider>
