@@ -201,74 +201,28 @@ export const MainDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Finance Card - Recent Transactions */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:border-emerald-200 flex flex-col">
+                    {/* Finance Card - Net Balance */}
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition-all duration-200 hover:border-emerald-300 hover:shadow-md hover:border-emerald-200">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                                 <Wallet size={20} />
                             </div>
-                            <span className="text-xs text-emerald-600 font-bold px-2 py-1 bg-emerald-50 rounded-full">
-                                This Week
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${financeSummary.balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                {financeSummary.balance >= 0 ? 'Profit' : 'Loss'}
                             </span>
                         </div>
-                        
-                        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                           {(() => {
-                                // Get start and end of current week
-                                const now = new Date();
-                                const dayOfWeek = now.getDay(); // 0 (Sun) - 6 (Sat)
-                                const startOfWeek = new Date(now);
-                                startOfWeek.setDate(now.getDate() - dayOfWeek);
-                                startOfWeek.setHours(0, 0, 0, 0);
-                                
-                                const endOfWeek = new Date(startOfWeek);
-                                endOfWeek.setDate(startOfWeek.getDate() + 6);
-                                endOfWeek.setHours(23, 59, 59, 999);
-
-                                const weeklyTransactions = transactions
-                                    .filter(t => {
-                                        const tDate = new Date(t.date);
-                                        return tDate >= startOfWeek && tDate <= endOfWeek;
-                                    })
-                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                    .slice(0, 5); // Limit to top 5 for card view
-
-                                if (weeklyTransactions.length === 0) {
-                                    return (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-400 mt-2">
-                                            <p className="text-sm">No transactions this week</p>
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <div className="space-y-3">
-                                        {weeklyTransactions.map(t => (
-                                            <div key={t.id} className="flex items-center justify-between text-sm">
-                                                <div className="flex items-center gap-2 overflow-hidden">
-                                                    <div className={`p-1.5 rounded-full shrink-0 ${t.type === TransactionType.INCOME ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
-                                                        {t.type === TransactionType.INCOME ? <ArrowRight size={12} className="-rotate-45" /> : <ArrowRight size={12} className="rotate-45" />}
-                                                    </div>
-                                                    <div className="truncate">
-                                                        <div className="font-medium text-gray-900 truncate">{t.description}</div>
-                                                        <div className="text-[10px] text-gray-500">{new Date(t.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</div>
-                                                    </div>
-                                                </div>
-                                                <div className={`font-bold whitespace-nowrap ${t.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {t.type === TransactionType.INCOME ? '+' : '-'}{formatCurrency(t.amount)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                           })()}
+                        <div className={`text-3xl font-bold mb-1 ${financeSummary.balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                            {formatCurrency(financeSummary.balance)}
                         </div>
-                         <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-                             <span>Balance:</span>
-                             <span className={`font-bold ${financeSummary.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 {formatCurrency(financeSummary.balance)}
-                             </span>
-                         </div>
+                        <div className="text-sm text-gray-500 mb-4">Net Balance</div>
+                        <div className="flex items-center text-xs text-gray-500 gap-4">
+                            <span className="text-green-600 flex items-center gap-1" title="Total Income">
+                                <ArrowRight size={12} className="-rotate-45" /> {formatCurrency(financeSummary.income)}
+                            </span>
+                            <span className="text-red-500 flex items-center gap-1" title="Total Expenses">
+                                <ArrowRight size={12} className="rotate-45" /> {formatCurrency(financeSummary.expenses)}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -443,6 +397,9 @@ export const MainDashboard: React.FC = () => {
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-medium text-gray-900">{transaction.description}</div>
+                                                        {transaction.contact && (
+                                                            <div className="text-xs text-gray-600 mb-0.5">{transaction.contact}</div>
+                                                        )}
                                                         <div className="text-xs text-gray-500">{new Date(transaction.date).toLocaleDateString()}</div>
                                                     </div>
                                                 </div>

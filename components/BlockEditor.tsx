@@ -20,7 +20,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [copied, setCopied] = useState(false);
   
-  const editorRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+      const editorRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
   // Handle Selection for Floating Toolbar
   useEffect(() => {
@@ -127,7 +127,33 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
   const handleKeyDown = (e: React.KeyboardEvent, block: Block) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      addBlock(block.id);
+      
+      // 1. Capture current content from DOM to ensure it's saved
+      const currentContent = editorRefs.current[block.id]?.innerHTML || '';
+      
+      // 2. Create the new block
+      const newBlock: Block = {
+          id: crypto.randomUUID(),
+          type: BlockType.PARAGRAPH,
+          content: '',
+          checked: false,
+      };
+
+      // 3. Construct new state with BOTH updates (save current + add new)
+      // This prevents stale state from one overwriting the other
+      const index = blocks.findIndex((b) => b.id === block.id);
+      const newBlocks = [...blocks];
+      newBlocks[index] = { ...newBlocks[index], content: currentContent }; // Save current
+      newBlocks.splice(index + 1, 0, newBlock); // Add new
+      
+      onChange(newBlocks);
+
+      // 4. Focus new block
+      setTimeout(() => {
+          setActiveBlockId(newBlock.id);
+          editorRefs.current[newBlock.id]?.focus();
+      }, 0);
+      
     } else if (e.key === 'Backspace' && !block.content) {
       e.preventDefault();
       removeBlock(block.id);
@@ -256,7 +282,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
       case BlockType.HEADING_1:
         return (
           <div 
-            ref={(el) => (editorRefs.current[block.id] = el)}
+            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             className={`text-2xl font-bold outline-none py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
@@ -278,7 +304,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
       case BlockType.HEADING_2:
         return (
           <div 
-            ref={(el) => (editorRefs.current[block.id] = el)}
+            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             className={`text-xl font-bold outline-none py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
@@ -307,7 +333,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
               className="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <div 
-              ref={(el) => (editorRefs.current[block.id] = el)}
+              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
               contentEditable={!readOnly}
               suppressContentEditableWarning
               className={`flex-1 outline-none py-1 px-2 rounded min-h-[32px] ${block.checked ? 'line-through text-gray-400' : ''} ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
@@ -332,7 +358,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
           <div className="flex items-start gap-3 group">
             <div className="mt-2 w-2 h-2 rounded-full bg-gray-400"></div>
             <div 
-              ref={(el) => (editorRefs.current[block.id] = el)}
+              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
               contentEditable={!readOnly}
               suppressContentEditableWarning
               className={`flex-1 outline-none py-1 px-2 rounded min-h-[32px] ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
@@ -356,7 +382,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
         return (
           <div className="group relative">
             <pre 
-              ref={(el) => (editorRefs.current[block.id] = el)}
+              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
               contentEditable={!readOnly}
               suppressContentEditableWarning
               className={`font-mono text-sm bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto outline-none ${isActive ? 'ring-2 ring-blue-200' : 'hover:bg-gray-800'} ${readOnly ? '' : 'cursor-text'}`}
@@ -379,7 +405,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
       default: // PARAGRAPH
         return (
           <div 
-            ref={(el) => (editorRefs.current[block.id] = el)}
+            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             className={`outline-none py-1 px-2 rounded min-h-[32px] ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}

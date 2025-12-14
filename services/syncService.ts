@@ -99,5 +99,77 @@ export const SyncService = {
         } catch (e) {
             console.error("Sync Reference Data Error:", e);
         }
+    },
+
+    // ------------------------------------------------------------------
+    // REALTIME SUBSCRIPTION
+    // ------------------------------------------------------------------
+    initRealtime: (onChange: (table: string) => void) => {
+        console.log("Initializing Realtime Subscription...");
+        const channel = supabase.channel('db-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public' },
+                async (payload) => {
+                    console.log('Realtime Event received:', payload);
+                    await SyncService.handleRealtimeEvent(payload);
+                    onChange(payload.table);
+                }
+            )
+            .subscribe((status) => {
+                console.log("Realtime Subscription Status:", status);
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    },
+
+    handleRealtimeEvent: async (payload: any) => {
+        const { table, eventType, new: newRecord, old: oldRecord } = payload;
+        
+        try {
+            switch (table) {
+                case 'proyectos_maestros':
+                    if (eventType === 'DELETE') await dbLocal.projects.delete(oldRecord.id);
+                    else await dbLocal.projects.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'tareas':
+                    if (eventType === 'DELETE') await dbLocal.tasks.delete(oldRecord.id);
+                    else await dbLocal.tasks.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'registro_finanzas':
+                    if (eventType === 'DELETE') await dbLocal.finance.delete(oldRecord.id);
+                    else await dbLocal.finance.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'accounts_payable':
+                    if (eventType === 'DELETE') await dbLocal.accounts_payable.delete(oldRecord.id);
+                    else await dbLocal.accounts_payable.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'accounts_receivable':
+                    if (eventType === 'DELETE') await dbLocal.accounts_receivable.delete(oldRecord.id);
+                    else await dbLocal.accounts_receivable.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'creative_artifacts':
+                    if (eventType === 'DELETE') await dbLocal.creative_artifacts.delete(oldRecord.id);
+                    else await dbLocal.creative_artifacts.put({ ...newRecord, sync_status: 'synced' }); // Assuming compatible
+                    break;
+                case 'folder_items':
+                    if (eventType === 'DELETE') await dbLocal.folder_items.delete(oldRecord.id);
+                    else await dbLocal.folder_items.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                // Add reference tables if needed
+                case 'inventario_activos':
+                    if (eventType === 'DELETE') await dbLocal.inventory.delete(oldRecord.id);
+                    else await dbLocal.inventory.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+                case 'ai_directory':
+                    if (eventType === 'DELETE') await dbLocal.ai_tools.delete(oldRecord.id);
+                    else await dbLocal.ai_tools.put({ ...newRecord, sync_status: 'synced' });
+                    break;
+            }
+        } catch (e) {
+            console.error("Error handling realtime event:", e);
+        }
     }
 };

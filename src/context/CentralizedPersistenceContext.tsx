@@ -24,6 +24,8 @@ import {
     FolderItem
 } from '../../types';
 
+import { SyncService } from '../../services/syncService';
+
 // Define Category Interface locally if not in types
 export interface FinanceCategory {
     id: string; // UUID
@@ -387,19 +389,38 @@ export const PersistenceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
-    // Initial Load
+    // Initial Load & Realtime Setup
     useEffect(() => {
+        // Initial Fetch
         fetchProjects();
         fetchCategories();
         fetchAccountsPayable();
         fetchAccountsReceivable();
         fetchCreativeArtifacts();
         fetchFolderItems();
-        fetchFinances(); // Load ALL finances by default
-        // Load other global directories if needed
-        // InventoryAPI.getAll().then(setInventory);
-        // AIMarketplaceAPI.getAll().then(setAiTools);
-    }, [fetchProjects, fetchCategories, fetchAccountsPayable, fetchAccountsReceivable, fetchFinances]);
+        fetchFinances(); 
+        
+        // Setup Realtime
+        console.log("Setting up Realtime in Provider...");
+        const cleanup = SyncService.initRealtime((table) => {
+            console.log(`Context: Realtime update for ${table}`);
+            switch(table) {
+                case 'proyectos_maestros': fetchProjects(); break;
+                case 'registro_finanzas': fetchFinances(); break;
+                case 'creative_artifacts': fetchCreativeArtifacts(); break;
+                case 'folder_items': fetchFolderItems(); break;
+                case 'accounts_payable': fetchAccountsPayable(); break;
+                case 'accounts_receivable': fetchAccountsReceivable(); break;
+                case 'finance_categories': fetchCategories(); break;
+                // Add others as needed
+                default: break;
+            }
+        });
+
+        return () => {
+             cleanup();
+        };
+    }, [fetchProjects, fetchCategories, fetchAccountsPayable, fetchAccountsReceivable, fetchFinances, fetchCreativeArtifacts, fetchFolderItems]);
 
     return (
         <PersistenceContext.Provider value={{

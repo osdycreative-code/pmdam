@@ -52,6 +52,7 @@ export const FinanceView: React.FC = () => {
     const [dueDate, setDueDate] = useState('');
     const [description, setDescription] = useState('');
     const [invoiceNum, setInvoiceNum] = useState('');
+    const [apArCategory, setApArCategory] = useState('');
 
     useEffect(() => {
         // Initial fetch handled by context, but we ensure cleanliness
@@ -161,7 +162,8 @@ export const FinanceView: React.FC = () => {
             balance: Number(apArAmount),
             dueDate: new Date(dueDate),
             invoiceNumber: invoiceNum,
-            status: 'Pending'
+            status: 'Pending',
+            category: apArCategory // Added category
         };
 
         if (activeTab === 'payable') {
@@ -172,7 +174,8 @@ export const FinanceView: React.FC = () => {
                 amount: Number(apArAmount),
                 due_date: dueDate,
                 status: 'Pending',
-                invoice_number: invoiceNum
+                invoice_number: invoiceNum,
+                category: apArCategory
             });
         } else {
              await createAccountReceivable({
@@ -181,11 +184,12 @@ export const FinanceView: React.FC = () => {
                 amount: Number(apArAmount),
                 due_date: dueDate,
                 status: 'Pending',
-                invoice_number: invoiceNum
+                invoice_number: invoiceNum,
+                category: apArCategory
             });
         }
         setIsModalOpen(false);
-        setEntityName(''); setApArAmount(''); setDueDate(''); setDescription(''); setInvoiceNum('');
+        setEntityName(''); setApArAmount(''); setDueDate(''); setDescription(''); setInvoiceNum(''); setApArCategory('');
     };
 
 
@@ -210,7 +214,29 @@ export const FinanceView: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                {/* ... other cards could go here ... */}
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col transition-all duration-200">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Income</span>
+                    <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-green-600">
+                            {formatCurrency(summary.income)}
+                        </span>
+                        <div className="p-2 rounded-full bg-green-50 text-green-600">
+                            <TrendingUp size={20} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col transition-all duration-200">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expenses</span>
+                    <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-red-600">
+                            {formatCurrency(summary.expense)}
+                        </span>
+                        <div className="p-2 rounded-full bg-red-50 text-red-600">
+                            <TrendingDown size={20} />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Toolbar */}
@@ -512,6 +538,20 @@ export const FinanceView: React.FC = () => {
                             <form onSubmit={handleCreateAPAR} className="space-y-4">
                                 <input required placeholder="Entity Name (e.g. Vendor or Client)" value={entityName} onChange={e => setEntityName(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
                                 <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
+                                
+                                <select 
+                                    value={apArCategory} 
+                                    onChange={e => setApArCategory(e.target.value)} 
+                                    className="w-full border-gray-300 rounded-lg p-2 text-sm"
+                                    title="Select Category"
+                                >
+                                    <option value="">Select Category...</option>
+                                    {categories
+                                        .filter(c => c.type === (activeTab === 'payable' ? 'Expense' : 'Income'))
+                                        .map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                    }
+                                </select>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <input required type="number" placeholder="Total Amount" value={apArAmount} onChange={e => setApArAmount(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
                                     <input required type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" title="Due Date" />

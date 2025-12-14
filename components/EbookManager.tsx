@@ -124,18 +124,46 @@ const EbookManager: React.FC = () => {
          await CreativeArtifactsAPI.update(ebook.id, artifact);
     };
 
-    const handleCreateEbook = async () => {
-        // Selection: Manual or AI
-        const mode = window.prompt("Create Ebook Mode:\n1. Manual\n2. AI Generate (Auto-Structure)", "1");
-        if(!mode) return;
+    // --- Modal State ---
+    const [modal, setModal] = useState<{
+        type: 'mode_select' | 'input_details' | 'image_url' | 'delete_confirm' | 'ai_generating';
+        data?: any;
+        callback?: (result: any) => void;
+    } | null>(null);
 
+    // --- Helpers to trigger Modals ---
+    const promptModal = (type: 'image_url', data?: any): Promise<string | null> => {
+        return new Promise((resolve) => {
+            setModal({ type, data, callback: resolve });
+        });
+    };
+    
+    // Special handler for Ebook Creation Flow
+    const startCreateFlow = () => {
+        setModal({ type: 'mode_select' });
+    };
+
+    const confirmModal = (ebookId: string) => {
+        setModal({ type: 'delete_confirm', data: { id: ebookId } });
+    };
+
+    const closeModal = () => setModal(null);
+
+
+    // --- Logic ---
+    const handleCreateEbookStep1 = (mode: 'Manual' | 'AI') => {
+        setModal({ type: 'input_details', data: { mode } });
+    };
+
+    const handleCreateEbookStep2 = async (input: string, mode: 'Manual' | 'AI') => {
+        closeModal();
         let title = '';
         let author = 'Me';
         let description = 'New Book';
         let structure = null;
 
-        if (mode === '2') {
-             const topic = prompt("Enter Topic/Premise for AI Generation:");
+        if (mode === 'AI') {
+             const topic = input;
              if(!topic) return;
              title = topic; // Placeholder
              description = `AI Generated book about ${topic}`;
@@ -146,7 +174,7 @@ const EbookManager: React.FC = () => {
                  { id: crypto.randomUUID(), title: 'Chapter 3: Final Thoughts', content: [{ id: crypto.randomUUID(), type: BlockType.PARAGRAPH, content: 'Wrapping up...' }], order: 2 },
              ];
         } else {
-             title = prompt("Enter Ebook Title:") || "Untitled";
+             title = input || "Untitled";
         }
 
         const newEbookSkeleton: Ebook = {
@@ -189,11 +217,13 @@ const EbookManager: React.FC = () => {
         setActiveSection({ type: 'introduction' }); 
     };
 
-    const handleDeleteEbook = async (ebookId: string) => {
-        if (window.confirm('Are you sure you want to delete this ebook?')) {
+    const performDeleteEbook = async () => {
+        if (modal?.data?.id) {
+            const ebookId = modal.data.id;
             setEbooks(prev => prev.filter(ebook => ebook.id !== ebookId));
             await CreativeArtifactsAPI.delete(ebookId);
             if (selectedEbookId === ebookId) setSelectedEbookId(null);
+            closeModal();
         }
     };
 
@@ -211,7 +241,6 @@ const EbookManager: React.FC = () => {
         });
     };
 
-    // --- Chapter Management ---
     const handleAddChapter = (ebookId: string) => {
         const ebook = ebooks.find(e => e.id === ebookId);
         if(!ebook) return;
@@ -242,16 +271,113 @@ const EbookManager: React.FC = () => {
             const newChapters = ebook.chapters.map(c => c.id === activeSection.id ? { ...c, content: blocks } : c);
             handleUpdateEbook(ebookId, { chapters: newChapters });
         } else {
-             // Special Sections
+             // Special sections
              const field = activeSection.type; // acknowledgments, disclaimer, etc.
              handleUpdateEbook(ebookId, { [field]: blocks });
         }
     };
-    
+
+    // --- Modal Renderer ---
+    const renderModal = () => {
+        if (!modal) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+                    {modal.type === 'mode_select' && (
+                        <div className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Create New Ebook</h3>
+                            <p className="text-sm text-gray-500 mb-6">Choose how you want to start your book.</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button 
+                                    onClick={() => handleCreateEbookStep1('Manual')}
+                                    className="p-4 border border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left group"
+                                >
+                                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg w-fit mb-3 group-hover:bg-indigo-200">
+                                        <Edit3 size={20} />
+                                    </div>
+                                    <div className="font-bold text-gray-900">Manual</div>
+                                    <div className="text-xs text-gray-500 mt-1">Start from scratch with a blank canvas</div>
+                                </button>
+                                <button 
+                                    onClick={() => handleCreateEbookStep1('AI')}
+                                    className="p-4 border border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
+                                >
+                                    <div className="p-2 bg-purple-100 text-purple-600 rounded-lg w-fit mb-3 group-hover:bg-purple-200">
+                                        <Wand2 size={20} />
+                                    </div>
+                                    <div className="font-bold text-gray-900">AI Assist</div>
+                                    <div className="text-xs text-gray-500 mt-1">Generate structure from a topic</div>
+                                </button>
+                            </div>
+                            <button onClick={closeModal} className="mt-6 w-full py-2 text-gray-500 text-sm hover:text-gray-700">Cancel</button>
+                        </div>
+                    )}
+
+                    {modal.type === 'input_details' && (
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const val = (e.target as any).input.value;
+                            handleCreateEbookStep2(val, modal.data.mode);
+                        }} className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">
+                                {modal.data.mode === 'AI' ? 'What is your book about?' : 'Name your book'}
+                            </h3>
+                            <input 
+                                name="input"
+                                autoFocus
+                                className="w-full border-gray-300 rounded-lg p-2.5 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                placeholder={modal.data.mode === 'AI' ? "E.g. A guide to urban gardening..." : "E.g. My Great Novel"}
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 text-sm">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">
+                                    {modal.data.mode === 'AI' ? 'Generate' : 'Create'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {modal.type === 'delete_confirm' && (
+                        <div className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Ebook?</h3>
+                            <p className="text-sm text-gray-500 mb-6">This action cannot be undone. All chapters and content will be lost.</p>
+                            <div className="flex justify-end gap-2">
+                                <button onClick={closeModal} className="px-4 py-2 text-gray-600 text-sm">Cancel</button>
+                                <button onClick={performDeleteEbook} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium">Delete</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {modal.type === 'image_url' && (
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const val = (e.target as any).input.value;
+                            if(modal.callback) modal.callback(val);
+                            closeModal();
+                        }} className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Enter Image URL</h3>
+                            <input 
+                                name="input"
+                                autoFocus
+                                className="w-full border-gray-300 rounded-lg p-2.5 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                placeholder="https://..."
+                                defaultValue="https://via.placeholder.com/300x400"
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => { if(modal.callback) modal.callback(null); closeModal(); }} className="px-4 py-2 text-gray-600 text-sm">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Set Image</button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     // --- Image Handling Helpers (Mock) ---
-    const handleImageUpload = (ebookId: string, type: 'cover' | 'back') => {
-        // In real app: open file picker, upload to storage, get URL.
-        const url = prompt("Enter Image URL (or assume upload logic):", "https://via.placeholder.com/300x400");
+    const handleImageUpload = async (ebookId: string, type: 'cover' | 'back') => {
+        const url = await promptModal('image_url');
         if(url) {
             if(type === 'cover') handleUpdateEbook(ebookId, { coverImage: url });
             else handleUpdateEbook(ebookId, { backCoverImage: url });
@@ -259,8 +385,10 @@ const EbookManager: React.FC = () => {
     };
 
     const handleAIGenerateImage = (ebookId: string, type: 'cover' | 'back') => {
-        // Mock AI Generation
-        alert("Generating AI Image... (Mock)");
+        // Mock AI Generation - replace alert with custom status if needed or just keep simplistic for now but w/o alert
+        // Actually, user dislikes alerts. Let's use a temporary ephemeral state or just start it.
+        // For now, let's just do it.
+        
         const mockUrl = `https://source.unsplash.com/random/300x450?book,${type === 'cover' ? 'cover' : 'back'},abstract&sig=${Date.now()}`;
         if(type === 'cover') handleUpdateEbook(ebookId, { coverImage: mockUrl });
         else handleUpdateEbook(ebookId, { backCoverImage: mockUrl });
@@ -511,6 +639,7 @@ const EbookManager: React.FC = () => {
                         )}
                     </div>
                 </div>
+                {renderModal()}
             </div>
         );
     };
@@ -531,7 +660,7 @@ const EbookManager: React.FC = () => {
                     </div>
                     
                     <button
-                        onClick={() => handleCreateEbook()}
+                        onClick={startCreateFlow}
                         className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm"
                     >
                         <Plus size={16} />
@@ -560,7 +689,7 @@ const EbookManager: React.FC = () => {
                         <p className="text-gray-400 max-w-sm text-center mb-6 text-sm">
                         Start writing your next bestseller. Create a new ebook to begin.
                         </p>
-                        <button onClick={handleCreateEbook} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        <button onClick={startCreateFlow} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
                             <Plus size={18} /> Create your first eBook
                         </button>
                     </div>
@@ -593,6 +722,7 @@ const EbookManager: React.FC = () => {
                     </div>
                  )}
             </div>
+            {renderModal()}
         </div>
     );
 }

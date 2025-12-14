@@ -135,6 +135,11 @@ export interface Product {
   stockCount: number;
   price: number;
   description: string;
+  // New Fields
+  brand?: string;
+  model?: string;
+  year?: number;
+  categories?: string[];
 }
 
 export interface AITool {
@@ -289,6 +294,8 @@ export interface Tarea {
     fecha_vencimiento?: string;
     es_subtarea_de_id?: string; // UUID
     ultima_actualizacion: string;
+    descripcion?: string;
+    campos_personalizados?: Record<string, string>;
     sync_status?: 'pending' | 'synced' | 'error'; 
 }
 

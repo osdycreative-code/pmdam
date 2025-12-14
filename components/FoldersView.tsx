@@ -1,7 +1,7 @@
 import React, { useContext, useState, useRef } from 'react';
 import { usePersistence } from '../src/context/CentralizedPersistenceContext';
-import { StoreContext } from '../App'; // Keep for other context props if needed like activeListId
-import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil, Save } from 'lucide-react';
+import { StoreContext } from '../App';
+import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil, Save, Check, Loader2 } from 'lucide-react';
 import { FolderItem, FolderItemType, Block, BlockType } from '../types';
 import { BlockEditor } from './BlockEditor';
 
@@ -19,6 +19,7 @@ export const FoldersView: React.FC = () => {
     const [editingItem, setEditingItem] = useState<FolderItem | null>(null);
     const [editName, setEditName] = useState('');
     const [editorBlocks, setEditorBlocks] = useState<Block[]>([]);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const currentFolderId = currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null;
@@ -126,9 +127,11 @@ export const FoldersView: React.FC = () => {
     
     const handleSaveContent = async () => {
         if(!previewItem) return;
+        setSaveStatus('saving');
         const contentStr = JSON.stringify(editorBlocks);
         await updateFolderItem(previewItem.id, { content: contentStr });
-        alert("Document saved!");
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
     };
 
     const navigateUp = (index: number) => {
@@ -407,9 +410,14 @@ export const FoldersView: React.FC = () => {
                              {(previewItem.type === FolderItemType.DOCUMENT || previewItem.type === FolderItemType.NOTE) && (
                                 <button 
                                     onClick={handleSaveContent} 
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 border border-transparent"
+                                    disabled={saveStatus === 'saving'}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm shadow-sm transition-all duration-200 border border-transparent 
+                                        ${saveStatus === 'saved' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
                                 >
-                                    <Save size={16} /> Save Changes
+                                    {saveStatus === 'saving' ? <Loader2 className="animate-spin" size={16}/> : 
+                                     saveStatus === 'saved' ? <Check size={16}/> : <Save size={16} />} 
+                                    {saveStatus === 'saving' ? 'Saving...' : 
+                                     saveStatus === 'saved' ? 'Saved' : 'Save Changes'}
                                 </button>
                              )}
 

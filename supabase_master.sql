@@ -117,27 +117,27 @@ CREATE OR REPLACE FUNCTION update_project_progress() RETURNS TRIGGER AS $$
 DECLARE total_tareas INTEGER;
 tareas_terminadas INTEGER;
 nuevo_progreso REAL;
-BEGIN
+BEGIN -- El search_path ya está fijo por la cláusula SET
+-- Usamos COALESCE para manejar INSERT (NEW.proyecto_id) y DELETE (OLD.proyecto_id)
 SELECT COUNT(id) INTO total_tareas
 FROM tareas
-WHERE proyecto_id = NEW.proyecto_id
-    OR proyecto_id = OLD.proyecto_id;
+WHERE proyecto_id = COALESCE(NEW.proyecto_id, OLD.proyecto_id);
 IF total_tareas > 0 THEN
 SELECT COUNT(id) INTO tareas_terminadas
 FROM tareas
-WHERE proyecto_id = NEW.proyecto_id
-    OR proyecto_id = OLD.proyecto_id
+WHERE proyecto_id = COALESCE(NEW.proyecto_id, OLD.proyecto_id)
     AND estado = 'Terminado';
 nuevo_progreso := (tareas_terminadas::REAL / total_tareas::REAL) * 100.0;
 ELSE nuevo_progreso := 0.0;
 END IF;
 UPDATE proyectos_maestros
-SET progreso_total = nuevo_progreso
-WHERE id = NEW.proyecto_id
-    OR id = OLD.proyecto_id;
+SET progreso_total = nuevo_progreso,
+    ultima_actualizacion = now()
+WHERE id = COALESCE(NEW.proyecto_id, OLD.proyecto_id);
 RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql -- CLÁUSULA CRÍTICA: Establece la ruta de búsqueda fija y segura
+SET search_path = public;
 -- Trigger que se dispara después de INSERT, UPDATE o DELETE en la tabla TAREAS
 CREATE TRIGGER on_task_update
 AFTER
@@ -186,3 +186,54 @@ SELECT USING (auth.uid() IS NOT NULL);
 -- CREATE POLICY "Deny all DML for general users"
 --   ON ai_directory FOR ALL
 --   USING (false);
+-- 4.6. ESTRUCTURA_CONTENIDO
+ALTER TABLE estructura_contenido ENABLE ROW LEVEL SECURITY;
+-- Política unificada: Permitir todo (Select, Insert, Update, Delete) si el usuario es dueño del proyecto padre
+CREATE POLICY "Allow owners to manage content structure" ON estructura_contenido FOR ALL USING (
+    EXISTS (
+        SELECT 1
+        FROM proyectos_maestros
+        WHERE id = estructura_contenido.proyecto_id
+            AND owner_user_id = auth.uid()
+    )
+) WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM proyectos_maestros
+        WHERE id = estructura_contenido.proyecto_id
+            AND owner_user_id = auth.uid()
+    )
+);-- 4.7. TAREAS AI USO
+ALTER TABLE tareas_ai_uso ENABLE ROW LEVEL SECURITY;
+-- Política: Permitir si el usuario es dueño de la tarea relacionada
+CREATE POLICY "Allow owners to manage AI usage on tasks" ON tareas_ai_uso FOR ALL USING (
+    EXISTS (
+        SELECT 1
+        FROM tareas
+        WHERE id = tareas_ai_uso.tarea_id
+            AND (
+                owner_user_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1
+                    FROM proyectos_maestros
+                    WHERE id = tareas.proyecto_id
+                        AND owner_user_id = auth.uid()
+                )
+            )
+    )
+) WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM tareas
+        WHERE id = tareas_ai_uso.tarea_id
+            AND (
+                owner_user_id = auth.uid()
+                OR EXISTS (
+                    SELECT 1
+                    FROM proyectos_maestros
+                    WHERE id = tareas.proyecto_id
+                        AND owner_user_id = auth.uid()
+                )
+            )
+    )
+);

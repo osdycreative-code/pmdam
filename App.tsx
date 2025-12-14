@@ -405,20 +405,29 @@ const App: React.FC = () => {
           icon: '✨' // Default icon
       };
 
-      const newLists: List[] = modules.map((type, index) => ({
-          id: crypto.randomUUID(),
-          spaceId: newSpaceId,
-          name: type === ModuleType.TASKS ? 'General Tasks' : 
-                type === ModuleType.INVENTORY ? 'Inventory' : 
-                type === ModuleType.DIRECTORY ? 'AI Tools' : 
-                type === ModuleType.PROJECTS ? 'Projects' :
-                type === ModuleType.FINANCE ? 'Budget' : 
-                type === ModuleType.APP_GENERATOR ? 'App Builder' : 
-                type === ModuleType.FOLDERS ? 'Documents & Files' : 'Studio',
-          color: getModuleColor(type),
-          type: type,
-          customFields: []
-      }));
+      const newLists: List[] = modules.map((type, index) => {
+          let name = 'Module';
+          switch (type) {
+              case ModuleType.TASKS: name = 'General Tasks'; break;
+              case ModuleType.INVENTORY: name = 'Inventory'; break;
+              case ModuleType.DIRECTORY: name = 'AI Tools'; break;
+              case ModuleType.PROJECTS: name = 'Projects'; break;
+              case ModuleType.FINANCE: name = 'Budget'; break;
+              case ModuleType.APP_GENERATOR: name = 'App Builder'; break;
+              case ModuleType.FOLDERS: name = 'Documents & Files'; break;
+              case ModuleType.STUDIO: name = 'Creative Studio'; break;
+              default: name = type.toString().charAt(0).toUpperCase() + type.toString().slice(1); break;
+          }
+          
+          return {
+              id: crypto.randomUUID(),
+              spaceId: newSpaceId,
+              name: name,
+              color: getModuleColor(type),
+              type: type,
+              customFields: []
+          };
+      });
 
       setSpaces(prev => [...prev, newSpace]);
       dbService.addItem(STORES.SPACES, newSpace);
