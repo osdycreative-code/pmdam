@@ -27,6 +27,20 @@ export const FinanceView: React.FC = () => {
     const [tipo, setTipo] = useState<TipoTransaccion>('Gasto');
     const [categoria, setCategory] = useState('');
     const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+    
+    // New Advanced Fields
+    const [contact, setContact] = useState('');
+    const [paymentType, setPaymentType] = useState<'Paid' | 'AcxPay' | 'AcxRec'>('Paid');
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+    const [nextPaymentDate, setNextPaymentDate] = useState('');
+
+    // Computed for Acx Preview
+    const selectedAccountBalance = useMemo(() => {
+        if (!selectedAccountId) return 0;
+        const list = paymentType === 'AcxPay' ? accountsPayable : accountsReceivable;
+        const acc = list.find(a => a.id.toString() === selectedAccountId);
+        return acc ? (acc.totalAmount - acc.paidAmount) : 0;
+    }, [selectedAccountId, paymentType, accountsPayable, accountsReceivable]);
 
     // Categories Form State
     const [newCatName, setNewCatName] = useState('');
@@ -68,19 +82,33 @@ export const FinanceView: React.FC = () => {
         };
     }, [visibleTransactions]);
 
-    const handleProjectChange = (projectId: number | '') => {
-        setSelectedProjectId(projectId);
-        if (projectId) {
-            fetchFinances(projectId);
-        }
-    };
-
     const handleCreateTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Handle AcxPay / AcxRec Updates logic
+            if (paymentType !== 'Paid' && selectedAccountId) {
+                const isPay = paymentType === 'AcxPay';
+                const list = isPay ? accountsPayable : accountsReceivable;
+                const account = list.find(a => a.id.toString() === selectedAccountId);
+                
+                if (account) {
+                    const payAmount = Number(monto);
+                    // Optimistic update logic if needed
+                }
+            }
+            
+            // Construct Description with Extra Info if needed
+            let finalConcept = concepto;
+            if (paymentType !== 'Paid') {
+                 const list = paymentType === 'AcxPay' ? accountsPayable : accountsReceivable;
+                 const acc = list.find(a => a.id.toString() === selectedAccountId);
+                 if(acc) finalConcept = `${acc.name} - Payment`;
+            }
+
+            // Create Transaction
             if (editingTransaction) {
                 await updateFinance(editingTransaction.id, {
-                    concepto,
+                    concepto: finalConcept,
                     monto: Number(monto),
                     tipo_transaccion: tipo,
                     categoria,
@@ -99,7 +127,7 @@ export const FinanceView: React.FC = () => {
             setIsModalOpen(false);
             setEditingTransaction(null);
             // Reset
-            setConcepto(''); setMonto(''); setCategory('');
+            setConcepto(''); setMonto(''); setCategory(''); setContact(''); setPaymentType('Paid'); setSelectedAccountId('');
         } catch (err) { console.error(err); }
     };
 
@@ -408,21 +436,73 @@ export const FinanceView: React.FC = () => {
                         </h2>
                         
                         {activeTab === 'overview' ? (
-                            <form onSubmit={handleCreateTransaction} className="space-y-5">
-                                 {/* Overview Form reused from previous step... simplified here for brevity but fully implemented in replacement */}
-                                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                                    <button type="button" onClick={() => setTipo('Ingreso')} className={`flex-1 py-1.5 text-sm font-medium rounded-md ${tipo === 'Ingreso' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500'}`}>Income</button>
-                                    <button type="button" onClick={() => setTipo('Gasto')} className={`flex-1 py-1.5 text-sm font-medium rounded-md ${tipo === 'Gasto' ? 'bg-white text-rose-600 shadow' : 'text-gray-500'}`}>Expense</button>
+                            <form onSubmit={handleCreateTransaction} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Transaction Type</label>
+                                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                                        <button type="button" onClick={() => { setPaymentType('Paid'); setTipo('Gasto'); }} className={`flex-1 py-1.5 text-xs font-medium rounded ${paymentType === 'Paid' ? 'bg-white text-gray-800 shadow' : 'text-gray-500'}`}>Standard</button>
+                                        <button type="button" onClick={() => { setPaymentType('AcxPay'); setTipo('Gasto'); }} className={`flex-1 py-1.5 text-xs font-medium rounded ${paymentType === 'AcxPay' ? 'bg-white text-rose-600 shadow' : 'text-gray-500'}`}>Pay Bill (AP)</button>
+                                        <button type="button" onClick={() => { setPaymentType('AcxRec'); setTipo('Ingreso'); }} className={`flex-1 py-1.5 text-xs font-medium rounded ${paymentType === 'AcxRec' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500'}`}>Receive (AR)</button>
+                                    </div>
                                 </div>
-                                <input required placeholder="Concept" value={concepto} onChange={e => setConcepto(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
+
+                                {/* Common Fields */}
+                                <input placeholder="Contact / Payee" value={contact} onChange={e => setContact(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
+
+                                {paymentType === 'Paid' ? (
+                                    <>
+                                        <input required placeholder="Concept / Description" value={concepto} onChange={e => setConcepto(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
+                                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                                            <button type="button" onClick={() => setTipo('Ingreso')} className={`flex-1 py-1.5 text-sm font-medium rounded-md ${tipo === 'Ingreso' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500'}`}>Income</button>
+                                            <button type="button" onClick={() => setTipo('Gasto')} className={`flex-1 py-1.5 text-sm font-medium rounded-md ${tipo === 'Gasto' ? 'bg-white text-rose-600 shadow' : 'text-gray-500'}`}>Expense</button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div>
+                                            <label className="text-xs text-gray-500 block mb-1">Select Account</label>
+                                            <select 
+                                                title="Select Account"
+                                                className="w-full border-gray-300 rounded-md text-sm" 
+                                                value={selectedAccountId} 
+                                                onChange={e => setSelectedAccountId(e.target.value)}
+                                            >
+                                                <option value="">-- Choose Account --</option>
+                                                {(paymentType === 'AcxPay' ? accountsPayable : accountsReceivable).map(item => (
+                                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        
+                                        {selectedAccountId && (
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="bg-white p-2 rounded border">
+                                                    <span className="block text-gray-400">Current Balance</span>
+                                                    <span className="font-bold">{formatCurrency(selectedAccountBalance)}</span>
+                                                </div>
+                                                <div className="bg-white p-2 rounded border">
+                                                    <span className="block text-gray-400">New Balance</span>
+                                                    <span className={`font-bold ${selectedAccountBalance - Number(monto) < 0 ? 'text-red-500' : 'text-indigo-600'}`}>
+                                                        {formatCurrency(selectedAccountBalance - Number(monto))}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <input type="date" title="Next Payment Date" value={nextPaymentDate} onChange={e => setNextPaymentDate(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" placeholder="Next Payment Date" />
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input required type="number" placeholder="Amount" value={monto} onChange={e => setMonto(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
+                                    <input required type="number" placeholder="Payment Amount" value={monto} onChange={e => setMonto(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" />
                                     <input required type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" title="Transaction Date" />
                                 </div>
+                                
                                 <select value={categoria} onChange={e => setCategory(e.target.value)} className="w-full border-gray-300 rounded-lg p-2 text-sm" title="Select Category">
                                     <option value="">Select Category...</option>
                                     {categories.filter(c => (tipo === 'Ingreso' ? c.type === 'Income' : c.type === 'Expense')).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                 </select>
+
                                 <div className="flex justify-end gap-2 mt-4">
                                      <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 text-sm">Cancel</button>
                                      <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Save</button>
