@@ -1,16 +1,24 @@
 import React, { useContext, useState, useRef } from 'react';
-import { StoreContext } from '../App';
-import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil } from 'lucide-react';
-import { FolderItem, FolderItemType } from '../types';
+import { usePersistence } from '../src/context/CentralizedPersistenceContext';
+import { StoreContext } from '../App'; // Keep for other context props if needed like activeListId
+import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil, Save } from 'lucide-react';
+import { FolderItem, FolderItemType, Block, BlockType } from '../types';
+import { BlockEditor } from './BlockEditor';
 
 export const FoldersView: React.FC = () => {
-    const { folderItems, activeListId, addFolderItem, updateFolderItem, deleteFolderItem, organizeFolderItems } = useContext(StoreContext);
+    // Legacy context for UI state (sidebar active item)
+    const { activeListId } = useContext(StoreContext);
+    
+    // New Persistence Context for Data
+    const { folderItems, createFolderItem, updateFolderItem, deleteFolderItem } = usePersistence();
+
     const [currentPath, setCurrentPath] = useState<{id: string, name: string}[]>([]);
     const [newItemName, setNewItemName] = useState('');
     const [isCreating, setIsCreating] = useState<FolderItemType | null>(null);
     const [previewItem, setPreviewItem] = useState<FolderItem | null>(null);
     const [editingItem, setEditingItem] = useState<FolderItem | null>(null);
     const [editName, setEditName] = useState('');
+    const [editorBlocks, setEditorBlocks] = useState<Block[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const currentFolderId = currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null;
@@ -25,12 +33,11 @@ export const FoldersView: React.FC = () => {
         return a.name.localeCompare(b.name);
     });
 
-    const handleCreate = (e: React.FormEvent) => {
+    const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!activeListId || !isCreating) return;
 
-        const newItem: FolderItem = {
-            id: crypto.randomUUID(),
+        const newItem: Omit<FolderItem, 'id'> = {
             listId: activeListId,
             parentId: currentFolderId,
             name: newItemName || `New ${isCreating}`,
@@ -39,7 +46,7 @@ export const FoldersView: React.FC = () => {
             size: isCreating === FolderItemType.FOLDER ? undefined : '0 KB'
         };
 
-        addFolderItem(newItem);
+        await createFolderItem(newItem);
         setNewItemName('');
         setIsCreating(null);
     };
@@ -49,17 +56,17 @@ export const FoldersView: React.FC = () => {
         setEditName(item.name);
     }
 
-    const handleSaveRename = () => {
+    const handleSaveRename = async () => {
         if (editingItem && editName.trim() !== "") {
-            updateFolderItem(editingItem.id, { name: editName.trim() });
+            await updateFolderItem(editingItem.id, { name: editName.trim() });
         }
         setEditingItem(null);
         setEditName('');
     }
 
-    const handleDelete = (itemId: string) => {
+    const handleDelete = async (itemId: string) => {
         if (window.confirm("Are you sure you want to delete this item?")) {
-            deleteFolderItem(itemId);
+            await deleteFolderItem(itemId);
         }
     }
 
@@ -72,7 +79,7 @@ export const FoldersView: React.FC = () => {
         return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !activeListId) return;
 
@@ -80,8 +87,7 @@ export const FoldersView: React.FC = () => {
         // For this demo, we use a blob URL to simulate "hosted" file.
         const fileUrl = URL.createObjectURL(file);
 
-        const newItem: FolderItem = {
-            id: crypto.randomUUID(),
+        const newItem: Omit<FolderItem, 'id'> = {
             listId: activeListId,
             parentId: currentFolderId,
             name: file.name,
@@ -91,7 +97,7 @@ export const FoldersView: React.FC = () => {
             url: fileUrl
         };
 
-        addFolderItem(newItem);
+        await createFolderItem(newItem);
         // Reset input so same file can be selected again if needed
         e.target.value = '';
     };
@@ -100,8 +106,29 @@ export const FoldersView: React.FC = () => {
         if (item.type === FolderItemType.FOLDER) {
             setCurrentPath(prev => [...prev, { id: item.id, name: item.name }]);
         } else {
+             // If opening a document, load blocks
+             if (item.type === FolderItemType.DOCUMENT || item.type === FolderItemType.NOTE) {
+                 if (item.content) {
+                     try {
+                         const parsed = JSON.parse(item.content);
+                         setEditorBlocks(Array.isArray(parsed) ? parsed : []);
+                     } catch(e) {
+                         // Fallback if content is raw string or invalid
+                         setEditorBlocks([{ id: crypto.randomUUID(), type: BlockType.PARAGRAPH, content: item.content || '' }]);
+                     }
+                 } else {
+                     setEditorBlocks([{ id: crypto.randomUUID(), type: BlockType.PARAGRAPH, content: '' }]);
+                 }
+             }
             setPreviewItem(item);
         }
+    };
+    
+    const handleSaveContent = async () => {
+        if(!previewItem) return;
+        const contentStr = JSON.stringify(editorBlocks);
+        await updateFolderItem(previewItem.id, { content: contentStr });
+        alert("Document saved!");
     };
 
     const navigateUp = (index: number) => {
@@ -141,19 +168,15 @@ export const FoldersView: React.FC = () => {
         }
         
         // Document / Note / Text Preview
-        if (item.type === FolderItemType.DOCUMENT || item.type === FolderItemType.NOTE || ['txt', 'md', 'json'].includes(ext || '')) {
+        if (item.type === FolderItemType.DOCUMENT || item.type === FolderItemType.NOTE) {
              return (
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 min-h-[400px] max-w-2xl mx-auto">
                      <h3 className="font-bold text-2xl mb-6 text-gray-800 border-b border-gray-100 pb-4">{item.name}</h3>
-                     <div className="space-y-4 text-gray-600 leading-relaxed font-serif">
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-                        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-                        <ul className="list-disc pl-5 space-y-1">
-                            <li>Analysis of the project requirements</li>
-                            <li>Resource allocation strategy</li>
-                            <li>Timeline estimation</li>
-                        </ul>
-                        <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                     <div className="min-h-[300px]">
+                        <BlockEditor 
+                            blocks={editorBlocks} 
+                            onChange={setEditorBlocks} 
+                        />
                      </div>
                 </div>
             );
@@ -388,11 +411,17 @@ export const FoldersView: React.FC = () => {
                              <button onClick={() => setPreviewItem(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all duration-200 hover:border-gray-200 border border-transparent">
                                 Close
                              </button>
+                             <button 
+                                onClick={handleSaveContent} 
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 border border-transparent"
+                             >
+                                <Save size={16} /> Save Changes
+                             </button>
                              <a 
                                 href={previewItem.url || '#'} 
                                 download={previewItem.name}
                                 onClick={(e) => { if(!previewItem.url) e.preventDefault(); }} 
-                                className={`flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 border border-transparent ${!previewItem.url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center gap-2 px-4 py-2 bg-white text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 border border-gray-200 shadow-sm transition-all duration-200 ${!previewItem.url ? 'hidden' : ''}`}
                              >
                                 <Download size={16} /> Download
                              </a>
