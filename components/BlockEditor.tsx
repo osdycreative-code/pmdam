@@ -128,10 +128,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       
-      // 1. Capture current content from DOM to ensure it's saved
-      const currentContent = editorRefs.current[block.id]?.innerHTML || '';
-      
-      // 2. Create the new block
+      // Create the new block
       const newBlock: Block = {
           id: crypto.randomUUID(),
           type: BlockType.PARAGRAPH,
@@ -139,16 +136,13 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
           checked: false,
       };
 
-      // 3. Construct new state with BOTH updates (save current + add new)
-      // This prevents stale state from one overwriting the other
       const index = blocks.findIndex((b) => b.id === block.id);
       const newBlocks = [...blocks];
-      newBlocks[index] = { ...newBlocks[index], content: currentContent }; // Save current
-      newBlocks.splice(index + 1, 0, newBlock); // Add new
+      newBlocks.splice(index + 1, 0, newBlock);
       
       onChange(newBlocks);
 
-      // 4. Focus new block
+      // Focus new block
       setTimeout(() => {
           setActiveBlockId(newBlock.id);
           editorRefs.current[newBlock.id]?.focus();
@@ -183,22 +177,22 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
         if (text === '#' && block.type !== BlockType.HEADING_1) {
              e.preventDefault();
              updateBlock(block.id, { type: BlockType.HEADING_1, content: '' });
-             editorRefs.current[block.id]!.innerHTML = ''; 
+             if(editorRefs.current[block.id]) editorRefs.current[block.id]!.innerHTML = ''; 
              return;
         } else if (text === '##' && block.type !== BlockType.HEADING_2) {
              e.preventDefault();
              updateBlock(block.id, { type: BlockType.HEADING_2, content: '' });
-             editorRefs.current[block.id]!.innerHTML = ''; 
+             if(editorRefs.current[block.id]) editorRefs.current[block.id]!.innerHTML = ''; 
              return;
         } else if (text === '[]' && block.type !== BlockType.TODO) {
              e.preventDefault();
              updateBlock(block.id, { type: BlockType.TODO, content: '' });
-             editorRefs.current[block.id]!.innerHTML = ''; 
+             if(editorRefs.current[block.id]) editorRefs.current[block.id]!.innerHTML = ''; 
              return;
         } else if (text === '-' && block.type !== BlockType.BULLET) {
              e.preventDefault();
              updateBlock(block.id, { type: BlockType.BULLET, content: '' });
-             editorRefs.current[block.id]!.innerHTML = ''; 
+             if(editorRefs.current[block.id]) editorRefs.current[block.id]!.innerHTML = ''; 
              return;
         }
 
@@ -278,48 +272,38 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
   const renderBlock = (block: Block) => {
     const isActive = activeBlockId === block.id;
     
+    // Common props for contentEditable elements
+    const commonProps = {
+        ref: (el: HTMLElement | null) => { if (el) editorRefs.current[block.id] = el; },
+        contentEditable: !readOnly,
+        suppressContentEditableWarning: true,
+        onInput: (e: React.FormEvent<HTMLElement>) => {
+            const content = e.currentTarget.innerHTML;
+            if (content !== block.content) {
+                // Update state immediately to avoid data loss on re-render.
+                updateBlock(block.id, { content });
+            }
+        },
+        onKeyDown: (e: React.KeyboardEvent) => handleKeyDown(e, block),
+        onFocus: () => setActiveBlockId(block.id),
+        className: `outline-none min-h-[1.5em] ${readOnly ? '' : 'cursor-text'}`,
+        dangerouslySetInnerHTML: isActive ? undefined : { __html: block.content }
+    };
+
     switch (block.type) {
       case BlockType.HEADING_1:
         return (
           <div 
-            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-            contentEditable={!readOnly}
-            suppressContentEditableWarning
-            className={`text-2xl font-bold outline-none py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
-            onBlur={(e) => {
-              // Clean up content before saving
-              let content = e.currentTarget.innerHTML;
-              // Handle empty content
-              if (content === '<br>' || content === '<br/>') {
-                content = '';
-              }
-              updateBlock(block.id, { content });
-            }}
-            onKeyDown={(e) => handleKeyDown(e, block)}
-            onFocus={() => setActiveBlockId(block.id)}
-            dangerouslySetInnerHTML={{ __html: block.content }}
+            {...commonProps}
+            className={`text-2xl font-bold py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${commonProps.className}`}
           />
         );
         
       case BlockType.HEADING_2:
         return (
           <div 
-            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-            contentEditable={!readOnly}
-            suppressContentEditableWarning
-            className={`text-xl font-bold outline-none py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
-            onBlur={(e) => {
-              // Clean up content before saving
-              let content = e.currentTarget.innerHTML;
-              // Handle empty content
-              if (content === '<br>' || content === '<br/>') {
-                content = '';
-              }
-              updateBlock(block.id, { content });
-            }}
-            onKeyDown={(e) => handleKeyDown(e, block)}
-            onFocus={() => setActiveBlockId(block.id)}
-            dangerouslySetInnerHTML={{ __html: block.content }}
+            {...commonProps}
+            className={`text-xl font-bold py-2 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${commonProps.className}`}
           />
         );
         
@@ -333,22 +317,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
               className="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <div 
-              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-              contentEditable={!readOnly}
-              suppressContentEditableWarning
-              className={`flex-1 outline-none py-1 px-2 rounded min-h-[32px] ${block.checked ? 'line-through text-gray-400' : ''} ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
-              onBlur={(e) => {
-                // Clean up content before saving
-                let content = e.currentTarget.innerHTML;
-                // Handle empty content
-                if (content === '<br>' || content === '<br/>') {
-                  content = '';
-                }
-                updateBlock(block.id, { content });
-              }}
-              onKeyDown={(e) => handleKeyDown(e, block)}
-              onFocus={() => setActiveBlockId(block.id)}
-              dangerouslySetInnerHTML={{ __html: block.content }}
+              {...commonProps}
+              className={`flex-1 py-1 px-2 rounded ${block.checked ? 'line-through text-gray-400' : ''} ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${commonProps.className}`}
             />
           </div>
         );
@@ -358,22 +328,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
           <div className="flex items-start gap-3 group">
             <div className="mt-2 w-2 h-2 rounded-full bg-gray-400"></div>
             <div 
-              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-              contentEditable={!readOnly}
-              suppressContentEditableWarning
-              className={`flex-1 outline-none py-1 px-2 rounded min-h-[32px] ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
-              onBlur={(e) => {
-                // Clean up content before saving
-                let content = e.currentTarget.innerHTML;
-                // Handle empty content
-                if (content === '<br>' || content === '<br/>') {
-                  content = '';
-                }
-                updateBlock(block.id, { content });
-              }}
-              onKeyDown={(e) => handleKeyDown(e, block)}
-              onFocus={() => setActiveBlockId(block.id)}
-              dangerouslySetInnerHTML={{ __html: block.content }}
+              {...commonProps}
+              className={`flex-1 py-1 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${commonProps.className}`}
             />
           </div>
         );
@@ -382,22 +338,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
         return (
           <div className="group relative">
             <pre 
-              ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-              contentEditable={!readOnly}
-              suppressContentEditableWarning
-              className={`font-mono text-sm bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto outline-none ${isActive ? 'ring-2 ring-blue-200' : 'hover:bg-gray-800'} ${readOnly ? '' : 'cursor-text'}`}
-              onBlur={(e) => {
-                // Clean up content before saving
-                let content = e.currentTarget.innerHTML;
-                // Handle empty content
-                if (content === '<br>' || content === '<br/>') {
-                  content = '';
-                }
-                updateBlock(block.id, { content });
-              }}
-              onKeyDown={(e) => handleKeyDown(e, block)}
-              onFocus={() => setActiveBlockId(block.id)}
-              dangerouslySetInnerHTML={{ __html: block.content }}
+              {...commonProps}
+              className={`font-mono text-sm bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto ${isActive ? 'ring-2 ring-blue-200' : 'hover:bg-gray-800'} ${commonProps.className}`}
             />
           </div>
         );
@@ -405,22 +347,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({ blocks, onChange, read
       default: // PARAGRAPH
         return (
           <div 
-            ref={(el) => { if (el) editorRefs.current[block.id] = el; }}
-            contentEditable={!readOnly}
-            suppressContentEditableWarning
-            className={`outline-none py-1 px-2 rounded min-h-[32px] ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${readOnly ? '' : 'cursor-text'}`}
-            onBlur={(e) => {
-              // Clean up content before saving
-              let content = e.currentTarget.innerHTML;
-              // Handle empty content
-              if (content === '<br>' || content === '<br/>') {
-                content = '';
-              }
-              updateBlock(block.id, { content });
-            }}
-            onKeyDown={(e) => handleKeyDown(e, block)}
-            onFocus={() => setActiveBlockId(block.id)}
-            dangerouslySetInnerHTML={{ __html: block.content }}
+            {...commonProps}
+            className={`py-1 px-2 rounded ${isActive ? 'bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'} ${commonProps.className}`}
           />
         );
     }

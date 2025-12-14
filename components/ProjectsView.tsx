@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePersistence } from '../src/context/CentralizedPersistenceContext';
-import { Search, Plus, Calendar, FolderKanban, Pencil, Trash2, Loader2, DollarSign, PieChart, ArrowLeft, CheckCircle2, Circle, Clock, LayoutList, Table as TableIcon, KanbanSquare, Calendar as CalendarIcon, ListTree, GripHorizontal, ChevronDown, ChevronRight, CircleDashed } from 'lucide-react';
+import { Search, Plus, Calendar, FolderKanban, Pencil, Trash2, Loader2, DollarSign, PieChart, ArrowLeft, CheckCircle2, Circle, Clock, LayoutList, Table as TableIcon, KanbanSquare, Calendar as CalendarIcon, ListTree, GripHorizontal, ChevronDown, ChevronRight, CircleDashed, Eye } from 'lucide-react';
 import { ProyectoMaestro, Tarea, EstadoTarea, ViewMode } from '../types';
 import { TaskEditModal } from './TaskEditModal';
 
@@ -51,6 +51,7 @@ export const ProjectsView: React.FC = () => {
         switch(s) {
             case 'Terminado': return <CheckCircle2 size={18} className="text-green-500" />;
             case 'En Progreso': return <CircleDashed size={18} className="text-blue-500 animate-[spin_3s_linear_infinite]" />;
+            case 'En Revisión': return <Eye size={18} className="text-purple-500" />;
             case 'Bloqueado': return <Circle size={18} className="text-red-400" />;
             default: return <Circle size={18} className="text-gray-300" />;
         }

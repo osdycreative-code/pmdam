@@ -1,7 +1,7 @@
 import React, { useContext, useState, useRef } from 'react';
 import { usePersistence } from '../src/context/CentralizedPersistenceContext';
 import { StoreContext } from '../App';
-import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil, Save, Check, Loader2 } from 'lucide-react';
+import { FolderOpen, FileText, File, Plus, ChevronRight, Home, Trash2, StickyNote, CheckSquare, Layers, Calendar, LayoutGrid, X, Download, Image as ImageIcon, FileCode, Pencil, Save, Check, Loader2, List as ListIcon, Grid, Type } from 'lucide-react';
 import { FolderItem, FolderItemType, Block, BlockType } from '../types';
 import { BlockEditor } from './BlockEditor';
 
@@ -20,6 +20,7 @@ export const FoldersView: React.FC = () => {
     const [editName, setEditName] = useState('');
     const [editorBlocks, setEditorBlocks] = useState<Block[]>([]);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // New View Mode State
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const currentFolderId = currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null;
@@ -169,6 +170,19 @@ export const FoldersView: React.FC = () => {
                 </div>
             );
         }
+
+        // PDF Preview
+        if (ext === 'pdf') {
+             return (
+                 <div className="w-full h-full min-h-[500px] flex flex-col">
+                     <iframe 
+                         src={item.url} 
+                         className="w-full flex-1 rounded-lg border border-gray-200"
+                         title={item.name}
+                     />
+                 </div>
+             );
+        }
         
         // Document / Note / Text Preview
         if (item.type === FolderItemType.DOCUMENT || item.type === FolderItemType.NOTE) {
@@ -215,12 +229,28 @@ export const FoldersView: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                    {/* Organize Menu */}
+                    {/* Organize Menu & View Toggle */}
+                     <div className="flex bg-gray-100 p-0.5 rounded-lg mr-2">
+                        <button 
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : ''}`}
+                            title="Grid View"
+                        >
+                            <Grid size={16} />
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded-md text-gray-500 hover:text-indigo-600 transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : ''}`}
+                            title="List View"
+                        >
+                            <ListIcon size={16} />
+                        </button>
+                    </div>
+
                     <div className="relative group">
                         <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 text-sm font-medium shadow-sm transition-all duration-200 hover:border-gray-300">
                             <LayoutGrid size={16} /> Organize
                         </button>
-                        {/* Mock functionalities since sorting is local state logic not yet implemented in Context */}
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-100 hidden group-hover:block z-20 py-1">
                             <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Group By</div>
                              <div className="px-4 py-2 text-sm text-gray-500 italic">Coming Soon</div>
@@ -281,7 +311,7 @@ export const FoldersView: React.FC = () => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto p-6 bg-white">
+            <div className="flex-1 overflow-auto p-6 bg-white slate-scroll">
                 {/* Creation Input */}
                 {isCreating && (
                     <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm max-w-md animate-[fadeIn_0.2s_ease-out]">
@@ -332,43 +362,121 @@ export const FoldersView: React.FC = () => {
                         <button onClick={() => fileInputRef.current?.click()} className="mt-4 text-indigo-600 hover:underline text-sm">Upload a file</button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        {visibleItems.map(item => (
-                            <div 
-                                key={item.id}
-                                onDoubleClick={() => navigateTo(item)}
-                                className="group relative flex flex-col items-center p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all duration-200 cursor-pointer select-none"
-                            >
-                                <div className="mb-3 transition-transform group-hover:scale-110 duration-200">
-                                    {getIcon(item.type)}
-                                </div>
-                                <span className="text-sm font-medium text-gray-700 text-center w-full truncate px-2">
-                                    {item.name}
-                                </span>
-                                <div className="text-[10px] text-gray-400 mt-1">
-                                    {item.size || new Date(item.updatedAt).toLocaleDateString()}
-                                </div>
+                    <>
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                {visibleItems.map(item => (
+                                    <div 
+                                        key={item.id}
+                                        onDoubleClick={() => navigateTo(item)}
+                                        className="group relative flex flex-col items-center p-6 rounded-xl hover:bg-gray-50 border border-gray-100 hover:border-indigo-200 transition-all duration-200 cursor-pointer select-none shadow-sm hover:shadow-md h-48 justify-between bg-white"
+                                    >
+                                        <div className="mb-1 transition-transform group-hover:scale-110 duration-200 flex-1 flex items-center justify-center">
+                                            {React.cloneElement(getIcon(item.type) as React.ReactElement<any>, { size: 48 })}
+                                        </div>
+                                        <div className="w-full text-center">
+                                             <span className="text-sm font-medium text-gray-700 block w-full line-clamp-2 leading-tight break-words px-1 h-[2.5em] flex items-center justify-center" title={item.name}>
+                                                {item.name}
+                                            </span>
+                                            <div className="text-[10px] text-gray-400 mt-2">
+                                                {item.size || new Date(item.updatedAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
 
-                                {/* Actions */}
-                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleRename(item); }}
-                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all duration-200 hover:border-indigo-200 border border-transparent"
-                                        title="Rename"
-                                    >
-                                        <Pencil size={14} />
-                                    </button>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 hover:border-red-200 border border-transparent"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                        {/* Actions */}
+                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all bg-white/80 p-0.5 rounded backdrop-blur-sm">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleRename(item); }}
+                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all duration-200"
+                                                title="Rename"
+                                            >
+                                                <Type size={14} />
+                                            </button>
+                                            
+                                            {(item.type === FolderItemType.DOCUMENT || item.type === FolderItemType.NOTE) && (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); navigateTo(item); }}
+                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all duration-200"
+                                                    title="Edit Content"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                            )}
+
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {viewMode === 'list' && (
+                            <div className="min-w-full inline-block align-middle">
+                                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Modified</th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {visibleItems.map(item => (
+                                                <tr 
+                                                    key={item.id} 
+                                                    onDoubleClick={() => navigateTo(item)}
+                                                    className="hover:bg-gray-50 cursor-pointer group transition-colors"
+                                                >
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center">
+                                                                {React.cloneElement(getIcon(item.type) as React.ReactElement<any>, { size: 20 })}
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-500">{new Date(item.updatedAt).toLocaleDateString()} {new Date(item.updatedAt).toLocaleTimeString()}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-500">{item.size || '-'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleRename(item); }}
+                                                                className="text-indigo-600 hover:text-indigo-900 p-1 bg-indigo-50 rounded hover:bg-indigo-100"
+                                                                title="Rename"
+                                                            >
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                                className="text-red-600 hover:text-red-900 p-1 bg-red-50 rounded hover:bg-red-100"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </>
                 )}
             </div>
 

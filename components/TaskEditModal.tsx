@@ -183,6 +183,8 @@ export const TaskEditModal: React.FC<any> = ({ task, allTasks, onClose, onUpdate
                                 >
                                      <option value='Por Hacer'>To Do</option>
                                      <option value='En Progreso'>In Progress</option>
+                                     <option value='En Revisión'>Review</option>
+                                     <option value='Bloqueado'>Blocked</option>
                                      <option value='Terminado'>Done</option>
                                  </select>
                              </div>

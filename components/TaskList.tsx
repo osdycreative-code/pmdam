@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { usePersistence } from '../src/context/CentralizedPersistenceContext';
-import { Plus, Filter, ArrowUpDown, Circle, CheckCircle2, CircleDashed, LayoutList, Table as TableIcon, KanbanSquare, Calendar as CalendarIcon, GripHorizontal, Briefcase, ListTree, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Filter, ArrowUpDown, Circle, CheckCircle2, CircleDashed, LayoutList, Table as TableIcon, KanbanSquare, Calendar as CalendarIcon, GripHorizontal, Briefcase, ListTree, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import { ViewMode, EstadoTarea, Tarea } from '../types';
 import { TaskEditModal } from './TaskEditModal';
 
@@ -10,6 +10,7 @@ const getStatusIcon = (s: string) => {
     switch(s) {
         case 'Terminado': return <CheckCircle2 size={18} className="text-green-500" />;
         case 'En Progreso': return <CircleDashed size={18} className="text-blue-500 animate-[spin_3s_linear_infinite]" />;
+        case 'En Revisión': return <Eye size={18} className="text-purple-500" />;
         case 'Bloqueado': return <Circle size={18} className="text-red-400" />;
         default: return <Circle size={18} className="text-gray-300" />;
     }
@@ -28,7 +29,7 @@ const getPriorityColor = (p: string) => {
 export const TaskList: React.FC = () => {
   const { tasks, projects, createTask, updateTask, deleteTask, loading } = usePersistence();
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.LIST);
   const [sortConfig, setSortConfig] = useState<{key: keyof any, direction: 'asc' | 'desc'} | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -46,7 +47,9 @@ export const TaskList: React.FC = () => {
 
   // Filter tasks
   const visibleTasks = useMemo(() => {
-      let filtered = tasks;
+      // Filter out subtasks (show only main tasks)
+      let filtered = tasks.filter(t => !t.es_subtarea_de_id);
+      
       if (selectedProjectId) {
           filtered = filtered.filter(t => t.proyecto_id === selectedProjectId);
       }
@@ -75,7 +78,7 @@ export const TaskList: React.FC = () => {
       if(newTaskTitle.trim() && selectedProjectId) {
           await createTask({
               titulo_tarea: newTaskTitle,
-              proyecto_id: Number(selectedProjectId),
+              proyecto_id: selectedProjectId,
               estado: 'Por Hacer',
               prioridad: 'Media'
           });
@@ -99,7 +102,7 @@ export const TaskList: React.FC = () => {
   };
 
   const onDrop = async (e: React.DragEvent, status: string) => {
-      const taskId = parseInt(e.dataTransfer.getData("taskId"));
+      const taskId = e.dataTransfer.getData("taskId");
       if(taskId) await updateTask(taskId, { estado: status });
   };
 
@@ -143,7 +146,7 @@ export const TaskList: React.FC = () => {
    <select 
                     className="text-sm border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors cursor-pointer"
                     value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
                     title="Filter by Project"
                  >
                      <option value="">All Projects</option>
