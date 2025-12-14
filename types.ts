@@ -244,6 +244,7 @@ export interface FolderItem {
   updatedAt: Date;
   size?: string; // e.g. "2 MB" for files, or block count for docs
   url?: string; // For uploaded files (mock storage URL)
+  content?: string; // JSON stringified Block[] for rich text docs
 }
 
 // --- Ebooks Module Types ---
@@ -259,62 +260,75 @@ export interface Ebook {
 
 // ==============================================================================
 // NEW SCHEMA INTERFACES (Centralized Persistence)
-// ==============================================================================
+// ==========================================
+// TIPOS MIGRADOS A UUID (STRING)
+// ==========================================
 
 export type EstadoTarea = 'Por Hacer' | 'En Progreso' | 'En Revisión' | 'Bloqueado' | 'Terminado';
 export type TipoTransaccion = 'Gasto' | 'Ingreso';
 
 export interface ProyectoMaestro {
-    id: number; // SERIAL in DB
+    id: string; // UUID
     nombre_proyecto: string;
-    tipo_activo: string; // 'Ebook', 'Curso', 'App', 'Web'
-    presupuesto_asignado: number; // numeric
-    gastos_acumulados: number; // numeric
-    progreso_total: number; // real (percentage)
-    fecha_creacion: string; // timestamp
-    ultima_actualizacion: string; // timestamp
+    tipo_activo: string; // 'Ebook', 'Curso'
+    presupuesto_asignado: number;
+    gastos_acumulados: number;
+    progreso_total: number;
+    fecha_creacion: string;
+    ultima_actualizacion: string;
+    owner_user_id?: string; // UUID
 }
 
 export interface Tarea {
-    id: number;
-    proyecto_id: number;
+    id: string; // UUID
+    proyecto_id: string; // UUID
     titulo_tarea: string;
     estado: EstadoTarea;
     asignado_a?: string;
-    prioridad: string; // Default 'Media'
-    fecha_vencimiento?: string; // date
-    descripcion?: string;
-    bloqueado_por_tarea_id?: number;
-    es_subtarea_de_id?: number;
+    prioridad: 'Alta' | 'Media' | 'Baja';
+    fecha_vencimiento?: string;
+    es_subtarea_de_id?: string; // UUID
     ultima_actualizacion: string;
+    sync_status?: 'pending' | 'synced' | 'error'; 
 }
 
 export interface RegistroFinanzas {
-    id: number;
-    proyecto_id: number;
-    tarea_id?: number;
+    id: string; // UUID
+    proyecto_id: string; // UUID
+    tarea_id?: string; // UUID
     concepto: string;
     tipo_transaccion: TipoTransaccion;
     monto: number;
     categoria?: string;
-    fecha_transaccion: string; // date
+    fecha_transaccion: string;
+    sync_status?: 'pending' | 'synced' | 'error';
 }
 
 export interface InventarioActivo {
-    id: number;
+    id: string; // UUID
     nombre_activo: string;
     tipo_archivo?: string;
     url_almacenamiento: string;
     licencia_derechos: string;
     fecha_expiracion?: string;
-    tarea_creacion_id?: number;
+    tarea_creacion_id?: string; // UUID
     ultima_actualizacion: string;
 }
 
 export interface AIDirectory {
-    id: number;
+    id: string; // UUID
     nombre_herramienta: string;
     categoria?: string;
     url_acceso?: string;
     costo_licencia: number;
+}
+
+
+export interface CreativeArtifact {
+    id: string; // UUID
+    title: string;
+    type: 'story' | 'coloring' | 'manual' | 'game' | 'app';
+    content: string; // The generated text or base64 image
+    prompt: string;
+    created_at: string;
 }
