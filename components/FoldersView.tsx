@@ -402,20 +402,26 @@ export const FoldersView: React.FC = () => {
                              <button onClick={() => setPreviewItem(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium text-sm transition-all duration-200 hover:border-gray-200 border border-transparent">
                                 Close
                              </button>
-                             <button 
-                                onClick={handleSaveContent} 
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 border border-transparent"
-                             >
-                                <Save size={16} /> Save Changes
-                             </button>
-                             <a 
-                                href={previewItem.url || '#'} 
-                                download={previewItem.name}
-                                onClick={(e) => { if(!previewItem.url) e.preventDefault(); }} 
-                                className={`flex items-center gap-2 px-4 py-2 bg-white text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 border border-gray-200 shadow-sm transition-all duration-200 ${!previewItem.url ? 'hidden' : ''}`}
-                             >
-                                <Download size={16} /> Download
-                             </a>
+                             
+                             {/* Save Button for Editable Types */}
+                             {(previewItem.type === FolderItemType.DOCUMENT || previewItem.type === FolderItemType.NOTE) && (
+                                <button 
+                                    onClick={handleSaveContent} 
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 shadow-sm transition-all duration-200 hover:border-indigo-300 border border-transparent"
+                                >
+                                    <Save size={16} /> Save Changes
+                                </button>
+                             )}
+
+                             {previewItem.url && (
+                                <a 
+                                    href={previewItem.url} 
+                                    download={previewItem.name}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white text-gray-600 rounded-lg font-medium text-sm hover:bg-gray-50 border border-gray-200 shadow-sm transition-all duration-200"
+                                >
+                                    <Download size={16} /> Download
+                                </a>
+                             )}
                         </div>
                     </div>
                 </div>

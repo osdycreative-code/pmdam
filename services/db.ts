@@ -1,0 +1,86 @@
+
+import { dbLocal } from './dexieDb';
+
+export const STORES = {
+  SPACES: 'spaces',
+  LISTS: 'lists',
+  TASKS: 'tasks',
+  PRODUCTS: 'products',
+  AI_TOOLS: 'ai_tools',
+  PROJECTS: 'projects',
+  TEMPLATES: 'templates',
+  TRANSACTIONS: 'finance', // Maps to 'finance' table
+  FOLDER_ITEMS: 'folder_items',
+  NOTIFICATIONS: 'notifications',
+  ACCOUNTS_PAYABLE: 'accounts_payable',
+  ACCOUNTS_RECEIVABLE: 'accounts_receivable'
+};
+
+const getTable = (storeName: string) => {
+    switch (storeName) {
+        case STORES.SPACES: return dbLocal.spaces;
+        case STORES.LISTS: return dbLocal.lists;
+        case STORES.TASKS: return dbLocal.tasks;
+        case STORES.PRODUCTS: return dbLocal.products;
+        case STORES.AI_TOOLS: return dbLocal.ai_tools;
+        case STORES.PROJECTS: return dbLocal.projects;
+        case STORES.TEMPLATES: return dbLocal.templates;
+        case STORES.TRANSACTIONS: return dbLocal.finance;
+        case STORES.FOLDER_ITEMS: return dbLocal.folder_items;
+        case STORES.NOTIFICATIONS: return dbLocal.notifications;
+        case STORES.ACCOUNTS_PAYABLE: return dbLocal.accounts_payable;
+        case STORES.ACCOUNTS_RECEIVABLE: return dbLocal.accounts_receivable;
+        default: throw new Error(`Unknown store: ${storeName}`);
+    }
+};
+
+export const dbService = {
+  init: async () => {
+    if (!dbLocal.isOpen()) {
+        await dbLocal.open();
+    }
+  },
+
+  getAll: async <T>(storeName: string): Promise<T[]> => {
+    const table = getTable(storeName);
+    return await table.toArray() as unknown as T[];
+  },
+
+  addItem: async <T>(storeName: string, item: T): Promise<void> => {
+    const table = getTable(storeName);
+    await (table as any).put(item); // Cast to any to handle different key types
+  },
+
+  updateItem: async <T>(storeName: string, id: string | number, updates: Partial<T>): Promise<void> => {
+    const table = getTable(storeName);
+    await (table as any).update(id, updates); // Cast to any
+  },
+
+  deleteItem: async (storeName: string, id: string | number): Promise<void> => {
+    const table = getTable(storeName);
+    await (table as any).delete(id); // Cast to any
+  },
+
+  getAuthToken: async (): Promise<string | null> => {
+    return localStorage.getItem('auth_token');
+  },
+
+  saveAuthToken: async (token: string): Promise<void> => {
+    localStorage.setItem('auth_token', token);
+  },
+
+  clearAuthToken: async (): Promise<void> => {
+    localStorage.removeItem('auth_token');
+  },
+
+  isEmpty: async (): Promise<boolean> => {
+      // Check a few key tables
+      const spacesCount = await dbLocal.spaces.count();
+      return spacesCount === 0;
+  },
+
+  clearDatabase: async (): Promise<void> => {
+      await dbLocal.delete();
+      await dbLocal.open();
+  }
+};

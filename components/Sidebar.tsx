@@ -170,6 +170,7 @@ export const Sidebar: React.FC = () => {
         {/* Spaces List */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-2 space-y-2">
             {spaces.map(space => {
+                const sidebarWidth = "w-64"; // Reduced from w-80lists.filter(l => l.spaceId === space.id);
                 const spaceLists = lists.filter(l => l.spaceId === space.id);
                 const isCollapsed = collapsedSpaces.has(space.id);
                 const isActive = activeSpaceId === space.id;
@@ -257,7 +258,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* User / Bottom Actions */}
-      <div className="p-4 border-t border-gray-200 bg-white space-y-1 shrink-0">
+      <div className="p-4 border-t border-gray-200 bg-white space-y-0.5 shrink-0">
         <button className="flex items-center gap-3 w-full text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent">
             <Search size={18} />
             Search
@@ -328,7 +329,7 @@ export const Sidebar: React.FC = () => {
         </button>
         <button 
             onClick={logout}
-            className="flex items-center gap-3 w-full text-sm text-rose-600 hover:text-rose-800 px-2 py-1.5 rounded hover:bg-rose-50 mt-2 border-t border-gray-100 pt-3 transition-all duration-200 hover:border-rose-200 border border-transparent"
+            className="flex items-center gap-3 w-full text-sm text-rose-600 hover:text-rose-800 px-2 py-1 rounded hover:bg-rose-50 mt-1 border-t border-gray-100 pt-2 transition-all duration-200 hover:border-rose-200 border border-transparent"
         >
             <LogOut size={18} />
             Sign Out

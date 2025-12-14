@@ -90,28 +90,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             if (error) throw error;
 
-            if (data.user) {
+            if (data.session) {
                 // Clear local database to ensure a fresh start for the new account
                 // This resolves the issue where creating an account showed previous data
                 // await dbService.clearDatabase(); // Clears NexusFlowDB - DEPRECATED
                 await Dexie.delete('PManLocalDB'); // Clears new local persistence DB
-                // Clear local data on fresh start if needed, or handle differently.
-                // For now, let's keep it simple. If valid login, we might not want to clear EVERYTHING,
-                // but if the user requested a fresh start or it's a new user, we might.
-                // The original code cleared the DB on successful login mock.
-                // With Supabase, we rely on syncing.
-                // If we want to clear strictly local state to avoid conflicts from another user:
+                // Clear local data on fresh start if needed
                 await dbLocal.delete(); // Deletes the entire IndexedDB
                 await dbLocal.open(); // Re-opens (re-creates) it
                 
-                // Note: Auth token storage is handled by Supabase client (in memory or localStorage by default,
-                // but we configured it to memory/custom in supabaseClient.ts? No, we set persistSession: false there).
-                // Actually, supabaseClient.ts says: "persistSession: false // We handle persistence manually via dbService"
-                // We should probably rely on Supabase's default persistence or simple localStorage for the token if not using cookies.
-                // For this refactor, let's assume session is handled by the AuthProvider context.
-    // Force reload to clear App's in-memory state since we wiped the DB
-                    window.location.reload();
-                } else {
+                // Force reload to clear App's in-memory state since we wiped the DB
+                window.location.reload();
+            } else if (data.user) {
+                // Return user but no session = Email confirmation required
                     // If email confirmation is required, Supabase might not return a session immediately
                      setSuccessMessage("¡Cuenta creada! Revisa tu correo para confirmar.");
                      setTimeout(() => {
@@ -119,7 +110,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         setSuccessMessage(null);
                      }, 5000);
                 }
-            }
+
         } else {
             // Login flow - authenticate with Supabase
             const { data, error } = await supabase.auth.signInWithPassword({

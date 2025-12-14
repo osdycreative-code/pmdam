@@ -95,3 +95,44 @@ EXCEPTION
 WHEN OTHERS THEN RETURN json_build_object('status', 'error', 'message', SQLERRM);
 END;
 $$;
+-- ==============================================================================
+-- 5. FIX: SECURITY WARNING (Function Search Path Mutable)
+-- ==============================================================================
+-- Recreamos la función update_project_progress con la ruta de búsqueda fijada
+CREATE OR REPLACE FUNCTION update_project_progress()
+RETURNS TRIGGER AS $$
+DECLARE
+    total_tareas INTEGER;
+    tareas_terminadas INTEGER;
+    nuevo_progreso REAL;
+BEGIN
+    -- FIJAR LA RUTA DE BÚSQUEDA A 'public'
+    SET search_path = public;
+
+    -- Contar todas las tareas relacionadas con el proyecto (usando OLD.proyecto_id si es DELETE)
+    SELECT COUNT(id)
+    INTO total_tareas
+    FROM tareas
+    WHERE proyecto_id = COALESCE(NEW.proyecto_id, OLD.proyecto_id); -- Usa NEW si es INSERT/UPDATE, OLD si es DELETE
+
+    IF total_tareas > 0 THEN
+        -- Contar tareas terminadas
+        SELECT COUNT(id)
+        INTO tareas_terminadas
+        FROM tareas
+        WHERE proyecto_id = COALESCE(NEW.proyecto_id, OLD.proyecto_id)
+          AND estado = 'Terminado';
+
+        nuevo_progreso := (tareas_terminadas::REAL / total_tareas::REAL) * 100.0;
+    ELSE
+        nuevo_progreso := 0.0;
+    END IF;
+
+    -- Actualizar el proyecto maestro
+    UPDATE proyectos_maestros
+    SET progreso_total = nuevo_progreso
+    WHERE id = COALESCE(NEW.proyecto_id, OLD.proyecto_id);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

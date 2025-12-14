@@ -70,7 +70,7 @@ export const ProjectsView: React.FC = () => {
         e.dataTransfer.setData("taskId", taskId);
     };
     const onDrop = async (e: React.DragEvent, status: string) => {
-        const taskId = parseInt(e.dataTransfer.getData("taskId"));
+        const taskId = e.dataTransfer.getData("taskId");
         if(taskId) await updateTask(taskId, { estado: status });
     };
     const onDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -149,7 +149,7 @@ export const ProjectsView: React.FC = () => {
         }
     };
 
-    const handleDelete = async (e: React.MouseEvent, id: number) => {
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         if(window.confirm('Are you sure you want to delete this project?')) {
             await deleteProject(id);
@@ -334,7 +334,7 @@ export const ProjectsView: React.FC = () => {
                                             task={task} 
                                             allTasks={tasks} 
                                             onEdit={(t: any) => setEditingTask(t)}
-                                            onDelete={(id: number) => {
+                                            onDelete={(id: string) => {
                                                 if(window.confirm('Delete this task?')) {
                                                     deleteTask(id);
                                                 }
@@ -372,7 +372,7 @@ export const ProjectsView: React.FC = () => {
                                                     <div
                                                         key={task.id}
                                                         draggable
-                                                        onDragStart={(e) => onDragStart(e, task.id.toString())}
+                                                        onDragStart={(e) => onDragStart(e, task.id)}
                                                         onClick={() => setEditingTask(task)}
                                                         className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all"
                                                     >
@@ -510,7 +510,7 @@ export const ProjectsView: React.FC = () => {
                                                                 task={task} 
                                                                 allTasks={tasks} 
                                                                 onEdit={(t: any) => setEditingTask(t)}
-                                                                onDelete={(id: number) => {
+                                                                onDelete={(id: string) => {
                                                                     if(window.confirm('Delete this task?')) {
                                                                         deleteTask(id);
                                                                     }
@@ -728,7 +728,25 @@ export const ProjectsView: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1 mt-4">
+                                {/* Task & Comments Info */}
+                                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5" title="Tasks Completed / Total">
+                                            <CheckCircle2 size={14} className="text-teal-500" />
+                                            <span className="font-medium">
+                                                {tasks.filter(t => t.proyecto_id === project.id && t.estado === 'Terminado').length}
+                                                <span className="text-gray-400 mx-0.5">/</span>
+                                                {tasks.filter(t => t.proyecto_id === project.id).length}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5" title="Comments">
+                                            <LayoutList size={14} className="text-indigo-400" />
+                                            <span className="font-medium">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1 mt-3">
                                     <div className="flex justify-between text-[10px] font-medium">
                                         <span className="text-gray-600">Progress</span>
                                         <span className="text-gray-900">{Math.round(project.progreso_total || 0)}%</span>

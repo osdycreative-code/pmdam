@@ -295,10 +295,10 @@ const EbookManager: React.FC = () => {
         return (
             <div className="h-full flex flex-col bg-white">
                 {/* Header */}
-                <div className="h-14 border-b border-gray-200 flex items-center justify-between px-4 bg-white shrink-0">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setSelectedEbookId(null)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500">
-                            <ArrowLeft size={20} />
+                <div className="h-12 border-b border-gray-200 flex items-center justify-between px-3 bg-white shrink-0">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSelectedEbookId(null)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">
+                            <ArrowLeft size={18} />
                         </button>
                         <div className="flex flex-col">
                             <input 
@@ -322,7 +322,7 @@ const EbookManager: React.FC = () => {
                         <div className="text-xs text-gray-400 mr-2 border-r border-gray-200 pr-3">
                             {ebook.chapters.length} Chapters • {ebook.status}
                         </div>
-                        <button className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
+                        <button className="flex items-center gap-2 px-3 py-1 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700">
                             <Download size={14} /> Export
                         </button>
                     </div>
@@ -330,10 +330,10 @@ const EbookManager: React.FC = () => {
 
                 <div className="flex-1 flex overflow-hidden">
                     {/* SIDEBAR */}
-                    <div className="w-72 border-r border-gray-200 bg-gray-50 flex flex-col overflow-y-auto">
+                    <div className="w-64 border-r border-gray-200 bg-gray-50 flex flex-col overflow-y-auto">
                         {/* Cover Image Slot */}
-                        <div className="p-4 border-b border-gray-200">
-                            <div className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
+                        <div className="p-3 border-b border-gray-200">
+                            <div className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
                                 <span>Cover (Portada)</span>
                                 <div className="flex gap-1">
                                     <button onClick={() => handleImageUpload(ebook.id, 'cover')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
@@ -344,7 +344,7 @@ const EbookManager: React.FC = () => {
                                 {ebook.coverImage ? (
                                     <img src={ebook.coverImage} alt="Cover" className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-gray-400 text-xs">No Cover</span>
+                                    <span className="text-gray-400 text-[10px]">No Cover</span>
                                 )}
                             </div>
                         </div>
@@ -353,21 +353,21 @@ const EbookManager: React.FC = () => {
                         <div className="border-b border-gray-200">
                             <button 
                                 onClick={() => setExpandedSections(p => ({...p, frontMatter: !p.frontMatter}))}
-                                className="w-full flex items-center justify-between p-3 text-xs font-bold text-gray-500 uppercase bg-gray-100/50 hover:bg-gray-100"
+                                className="w-full flex items-center justify-between p-2 text-[10px] font-bold text-gray-500 uppercase bg-gray-100/50 hover:bg-gray-100"
                             >
                                 <span>Front Matter</span>
                                 {expandedSections.frontMatter ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                             </button>
                             
                             {expandedSections.frontMatter && (
-                                <div className="p-2 space-y-0.5">
+                                <div className="p-1.5 space-y-0.5">
                                     {/* Copyright (Special: Text Field) */}
-                                    <div className="px-3 py-2 text-sm text-gray-600">
-                                        <label className="text-[10px] text-gray-400 block uppercase mb-1">Copyright</label>
+                                    <div className="px-2 py-1.5 text-xs text-gray-600">
+                                        <label className="text-[9px] text-gray-400 block uppercase mb-1">Copyright</label>
                                         <textarea 
                                             value={ebook.copyright}
                                             onChange={e => handleUpdateEbook(ebook.id, { copyright: e.target.value })}
-                                            className="w-full text-xs border border-gray-200 rounded p-1.5 focus:border-indigo-300 resize-none bg-white"
+                                            className="w-full text-[10px] border border-gray-200 rounded p-1 focus:border-indigo-300 resize-none bg-white"
                                             rows={2}
                                         />
                                     </div>
@@ -380,7 +380,7 @@ const EbookManager: React.FC = () => {
                                         <div 
                                             key={item.id}
                                             onClick={() => setActiveSection({ type: item.id as EditorSection })}
-                                            className={`px-3 py-2 rounded-md text-sm cursor-pointer mx-2 ${activeSection?.type === item.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+                                            className={`px-2 py-1.5 rounded-md text-xs cursor-pointer mx-1 ${activeSection?.type === item.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
                                         >
                                             {item.label}
                                         </div>
@@ -391,10 +391,10 @@ const EbookManager: React.FC = () => {
 
                         {/* Chapters */}
                         <div className="border-b border-gray-200">
-                             <div className="flex items-center justify-between p-3 bg-gray-100/50 hover:bg-gray-100">
+                             <div className="flex items-center justify-between p-2 bg-gray-100/50 hover:bg-gray-100">
                                 <button 
                                     onClick={() => setExpandedSections(p => ({...p, chapters: !p.chapters}))}
-                                    className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase"
+                                    className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase"
                                 >
                                     {expandedSections.chapters ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                                     <span>Chapters</span>
@@ -403,15 +403,15 @@ const EbookManager: React.FC = () => {
                             </div>
                             
                             {expandedSections.chapters && (
-                                <div className="p-2 space-y-0.5">
+                                <div className="p-1.5 space-y-0.5">
                                     {ebook.chapters.map((chap, idx) => (
                                         <div 
                                             key={chap.id}
                                             onClick={() => setActiveSection({ type: 'chapter', id: chap.id })}
-                                            className={`flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer mx-2 group ${activeSection?.type === 'chapter' && activeSection.id === chap.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+                                            className={`flex items-center justify-between px-2 py-1.5 rounded-md text-xs cursor-pointer mx-1 group ${activeSection?.type === 'chapter' && activeSection.id === chap.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
                                         >
                                             <div className="truncate flex-1">
-                                                <span className="opacity-50 text-xs mr-2">{idx + 1}.</span>
+                                                <span className="opacity-50 text-[10px] mr-1.5">{idx + 1}.</span>
                                                 {chap.title}
                                             </div>
                                             <button 
@@ -430,14 +430,14 @@ const EbookManager: React.FC = () => {
                          <div className="border-b border-gray-200">
                             <button 
                                 onClick={() => setExpandedSections(p => ({...p, backMatter: !p.backMatter}))}
-                                className="w-full flex items-center justify-between p-3 text-xs font-bold text-gray-500 uppercase bg-gray-100/50 hover:bg-gray-100"
+                                className="w-full flex items-center justify-between p-2 text-[10px] font-bold text-gray-500 uppercase bg-gray-100/50 hover:bg-gray-100"
                             >
                                 <span>Back Matter</span>
                                 {expandedSections.backMatter ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                             </button>
                             
                             {expandedSections.backMatter && (
-                                <div className="p-2 space-y-0.5">
+                                <div className="p-1.5 space-y-0.5">
                                      {[
                                         { id: 'epilogue', label: 'Epilogue' },
                                         { id: 'conclusion', label: 'Conclusion' }
@@ -445,7 +445,7 @@ const EbookManager: React.FC = () => {
                                         <div 
                                             key={item.id}
                                             onClick={() => setActiveSection({ type: item.id as EditorSection })}
-                                            className={`px-3 py-2 rounded-md text-sm cursor-pointer mx-2 ${activeSection?.type === item.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+                                            className={`px-2 py-1.5 rounded-md text-xs cursor-pointer mx-1 ${activeSection?.type === item.id ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
                                         >
                                             {item.label}
                                         </div>
@@ -455,8 +455,8 @@ const EbookManager: React.FC = () => {
                         </div>
 
                          {/* Back Cover Image Slot */}
-                         <div className="p-4 border-b border-gray-200">
-                            <div className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
+                         <div className="p-3 border-b border-gray-200">
+                            <div className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
                                 <span>Back Cover (Contraportada)</span>
                                 <div className="flex gap-1">
                                     <button onClick={() => handleImageUpload(ebook.id, 'back')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
@@ -467,7 +467,7 @@ const EbookManager: React.FC = () => {
                                 {ebook.backCoverImage ? (
                                     <img src={ebook.backCoverImage} alt="Back Cover" className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-gray-400 text-xs">No Back Cover</span>
+                                    <span className="text-gray-400 text-[10px]">No Back Cover</span>
                                 )}
                             </div>
                         </div>
@@ -478,7 +478,7 @@ const EbookManager: React.FC = () => {
                     <div className="flex-1 flex flex-col bg-white relative">
                         {activeSection ? (
                             <>
-                                <div className="p-8 pb-0 max-w-3xl mx-auto w-full">
+                                <div className="p-6 pb-0 max-w-3xl mx-auto w-full">
                                     {/* Editable Title for Chapters Only, Static for Sections? */}
                                     {activeSection.type === 'chapter' ? (
                                         <input 
@@ -487,14 +487,14 @@ const EbookManager: React.FC = () => {
                                                 const newChapters = ebook.chapters.map(c => c.id === activeSection.id ? { ...c, title: e.target.value } : c);
                                                 handleUpdateEbook(ebook.id, { chapters: newChapters });
                                             }}
-                                            className="text-3xl font-bold text-gray-900 border-none focus:ring-0 p-0 w-full placeholder-gray-300 mb-4"
+                                            className="text-2xl font-bold text-gray-900 border-none focus:ring-0 p-0 w-full placeholder-gray-300 mb-3"
                                             placeholder="Section Title"
                                         />
                                     ) : (
-                                        <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-2">{activeTitle}</h2>
+                                        <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">{activeTitle}</h2>
                                     )}
                                 </div>
-                                <div className="flex-1 overflow-y-auto px-8 pb-20">
+                                <div className="flex-1 overflow-y-auto px-6 pb-20">
                                     <div className="max-w-3xl mx-auto">
                                         <BlockEditor 
                                             blocks={activeContent} 
@@ -520,39 +520,39 @@ const EbookManager: React.FC = () => {
     return (
         <div className="h-full flex flex-col bg-gray-50/50">
             {/* Main List View (Gallery) same as before... */}
-             <div className="border-b border-gray-200 p-6 bg-white shrink-0">
+             <div className="border-b border-gray-200 px-4 py-3 bg-white shrink-0">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Book className="text-indigo-600" size={28} />
+                        <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <Book className="text-indigo-600" size={20} />
                         Gestor de eBooks
                         </h1>
-                        <p className="text-gray-500 mt-1">Write, organize and publish your digital books</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Write, organize and publish your digital books</p>
                     </div>
                     
                     <button
                         onClick={() => handleCreateEbook()}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         Crear eBook
                     </button>
                 </div>
             </div>
-             <div className="px-6 py-4 border-b border-gray-200 bg-white">
-                <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+             <div className="px-4 py-2 border-b border-gray-200 bg-white">
+                <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                 <input
                     type="text"
                     placeholder="Search eBooks..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                    className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-50 focus:bg-white"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 </div>
             </div>
             
-             <div className="flex-1 overflow-y-auto p-6">
+             <div className="flex-1 overflow-y-auto p-4">
                  {ebooks.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
                         <Book size={48} className="mb-4 text-gray-200" />
@@ -565,26 +565,26 @@ const EbookManager: React.FC = () => {
                         </button>
                     </div>
                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {ebooks.filter(e => e.title.includes(searchTerm)).map(ebook => (
                              <div 
                                 key={ebook.id}
                                 onClick={() => { setSelectedEbookId(ebook.id); setActiveSection({type: 'introduction'}); }}
-                                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col transition-all duration-200 hover:border-indigo-300 hover:shadow-md cursor-pointer group"
+                                className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col transition-all duration-200 hover:border-indigo-300 hover:shadow-md cursor-pointer group"
                                 >
-                                <div className="h-40 bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center relative border-b border-gray-100 overflow-hidden">
+                                <div className="h-32 bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center relative border-b border-gray-100 overflow-hidden">
                                     {ebook.coverImage ? (
                                         <img src={ebook.coverImage} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" alt="Cover" />
                                     ) : (
-                                        <Book size={48} className="text-indigo-200 group-hover:scale-110 transition-transform duration-300" />
+                                        <Book size={32} className="text-indigo-200 group-hover:scale-110 transition-transform duration-300" />
                                     )}
-                                    <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${ebook.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{ebook.status}</span>
+                                    <span className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${ebook.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{ebook.status}</span>
                                 </div>
-                                <div className="p-5 flex-1 flex flex-col">
-                                    <h3 className="font-bold text-gray-900 text-lg mb-1 line-clamp-1">{ebook.title}</h3>
-                                    <p className="text-gray-500 text-xs mb-3">by {ebook.author}</p>
-                                    <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-50 mt-auto">
-                                        <span className="flex items-center gap-1"><Layers size={12}/> {ebook.chapters.length} Ch</span>
+                                <div className="p-3 flex-1 flex flex-col">
+                                    <h3 className="font-bold text-gray-900 text-sm mb-0.5 line-clamp-1">{ebook.title}</h3>
+                                    <p className="text-gray-500 text-[10px] mb-2">by {ebook.author}</p>
+                                    <div className="flex items-center justify-between text-[10px] text-gray-400 pt-2 border-t border-gray-50 mt-auto">
+                                        <span className="flex items-center gap-1"><Layers size={10}/> {ebook.chapters.length} Ch</span>
                                         <span>{new Date(ebook.updatedAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>

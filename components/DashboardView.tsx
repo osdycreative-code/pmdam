@@ -98,9 +98,6 @@ export const DashboardView: React.FC = () => {
                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                                 <Wallet size={20} />
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${financeStats.balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                {financeStats.balance >= 0 ? '+ Positive' : '- Negative'}
-                            </span>
                         </div>
                         <div className="text-2xl font-bold text-gray-900 mb-1">{formatCurrency(financeStats.balance)}</div>
                         <div className="text-sm text-gray-500">Net Balance</div>
@@ -112,7 +109,7 @@ export const DashboardView: React.FC = () => {
                             <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">
                                 <FolderKanban size={20} />
                             </div>
-                            <span className="text-xs text-teal-600 font-bold px-2 py-1 bg-teal-50 rounded-full">{taskStats.activeCount} Active</span>
+                            <span className="text-xs text-teal-600 font-bold px-2 py-1 bg-teal-50 rounded-full">{projectStats.activeCount} Active</span>
                         </div>
                         <div className="text-2xl font-bold text-gray-900 mb-1">{projectStats.activeCount}</div>
                         <div className="text-sm text-gray-500">Active Projects</div>
