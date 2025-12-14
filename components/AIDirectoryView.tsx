@@ -186,6 +186,18 @@ export const AIDirectoryView: React.FC = () => {
                                     <option value="Copywriting"/>
                                     <option value="Video"/>
                                     <option value="Audio"/>
+                                    <option value="Coding"/>
+                                    <option value="Productivity"/>
+                                    <option value="Data Analysis"/>
+                                    <option value="Research"/>
+                                    <option value="3D Models"/>
+                                    <option value="Music"/>
+                                    <option value="Marketing"/>
+                                    <option value="Education"/>
+                                    <option value="Legal"/>
+                                    <option value="Finance"/>
+                                    <option value="Automation"/>
+                                    <option value="Translation"/>
                                 </datalist>
                             </div>
                             <div>
