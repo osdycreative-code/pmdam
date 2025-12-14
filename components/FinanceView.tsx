@@ -17,7 +17,7 @@ export const FinanceView: React.FC = () => {
 
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<any>(null);
     
@@ -45,16 +45,14 @@ export const FinanceView: React.FC = () => {
 
     // --- Overview Logic ---
     const visibleTransactions = useMemo(() => {
-        let filtered = finances;
-        if (selectedProjectId) {
-             filtered = filtered.filter(f => f.proyecto_id === selectedProjectId);
-        }
+        // No longer filter by project ID
+        const filtered = finances;
         
         return filtered.filter(t => 
             t.concepto.toLowerCase().includes(searchTerm.toLowerCase()) || 
             (t.categoria && t.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
         ).sort((a, b) => new Date(b.fecha_transaccion).getTime() - new Date(a.fecha_transaccion).getTime());
-    }, [finances, searchTerm, selectedProjectId]);
+    }, [finances, searchTerm]); // Removed selectedProjectId dependency
 
     const summary = useMemo(() => {
         const income = visibleTransactions
@@ -90,8 +88,8 @@ export const FinanceView: React.FC = () => {
                 });
             } else {
                 await createFinance({
-                    proyecto_id: Number(selectedProjectId),
-                    concepto,
+                    proyecto_id: undefined, // No project association enforced
+                    concepto: finalConcept,
                     monto: Number(monto),
                     tipo_transaccion: tipo,
                     categoria,
@@ -190,20 +188,6 @@ export const FinanceView: React.FC = () => {
             {/* Toolbar */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                     <div className="flex items-center gap-2">
-                         <Briefcase size={16} className="text-gray-400"/>
-                         <select 
-                            className="text-sm border-gray-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
-                            value={selectedProjectId}
-                            onChange={(e) => handleProjectChange(e.target.value ? Number(e.target.value) : '')}
-                            title="Select Project"
-                         >
-                             <option value="">Select Project...</option>
-                             {projects.map(p => (
-                                 <option key={p.id} value={p.id}>{p.nombre_proyecto}</option>
-                             ))}
-                         </select>
-                     </div>
                      <div className="relative w-full max-w-sm">
                         <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                         <input 
@@ -218,13 +202,11 @@ export const FinanceView: React.FC = () => {
 
                 <button 
                     onClick={() => {
-                         if (!selectedProjectId) return alert("Select a project first");
                          setEditingTransaction(null);
                          setConcepto(''); setMonto(''); setCategory('');
                          setIsModalOpen(true);
                     }}
-                    disabled={!selectedProjectId}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 font-medium text-xs shadow-sm disabled:opacity-50"
+                    className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 font-medium text-xs shadow-sm"
                 >
                     <Plus size={14} /> Add Transaction
                 </button>
@@ -232,9 +214,7 @@ export const FinanceView: React.FC = () => {
 
             {/* Table */}
              <div className="flex-1 overflow-auto bg-gray-50/50 p-6">
-                {!selectedProjectId ? (
-                    <div className="text-center text-gray-400 mt-20">Select a project to view details</div>
-                ) : visibleTransactions.length === 0 ? (
+                {visibleTransactions.length === 0 ? (
                     <div className="text-center text-gray-400 mt-20">No transactions found</div>
                 ) : (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
