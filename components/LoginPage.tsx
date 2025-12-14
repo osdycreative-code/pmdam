@@ -23,7 +23,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   // Validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isEmailValid = emailRegex.test(email);
-  const isPasswordValid = password.trim().length >= 8 && /[A-Z]/.test(password); // Added uppercase requirement
+  const isPasswordValid = password.trim().length >= 8 
+                          && /[A-Z]/.test(password) 
+                          && /[a-z]/.test(password) 
+                          && /[0-9]/.test(password) 
+                          && /[^A-Za-z0-9]/.test(password);
   const isConfirmValid = !isRegistering || (password === confirmPassword);
   
   const isFormValid = isEmailValid && (isResetting || (isPasswordValid && isConfirmValid));
@@ -210,7 +214,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 outline-none transition-all text-sm placeholder-gray-400"
-                            placeholder="Mínimo 8 caracteres, 1 mayúscula"
+                            placeholder="Min 8 chars, 1 Upper, 1 Lower, 1 Number, 1 Symbol"
                             required={!isResetting}
                         />
                     </div>

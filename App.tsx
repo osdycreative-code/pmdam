@@ -851,8 +851,8 @@ const App: React.FC = () => {
       isSidebarOpen, toggleSidebar
     }}>
       <div className="flex h-screen w-full bg-white overflow-hidden text-gray-900 relative">
-        <div className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-gray-50 h-full overflow-hidden flex-shrink-0 ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0'}`}>
-             <div className="w-64 h-full"> 
+        <div className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-gray-50 h-full overflow-hidden flex-shrink-0 ${isSidebarOpen ? 'w-52 opacity-100' : 'w-0 opacity-0'}`}>
+             <div className="w-52 h-full"> 
                  <Sidebar />
              </div>
         </div>

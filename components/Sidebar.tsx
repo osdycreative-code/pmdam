@@ -119,9 +119,9 @@ export const Sidebar: React.FC = () => {
   return (
     <div className="bg-gray-50 flex flex-col flex-shrink-0 h-full relative w-full header-sidebar">
       {/* App Header */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 bg-white shrink-0">
-        <div className="flex items-center gap-2 font-bold text-lg text-indigo-600">
-            <Hexagon className="fill-indigo-600 text-indigo-600" size={24} />
+      <div className="h-10 flex items-center justify-between px-3 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex items-center gap-2 font-bold text-base text-indigo-600">
+            <Hexagon className="fill-indigo-600 text-indigo-600" size={20} />
             <span>NexusFlow</span>
         </div>
         <button 
@@ -129,61 +129,60 @@ export const Sidebar: React.FC = () => {
             className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
             title="Collapse Sidebar"
         >
-            <PanelLeftClose size={18} />
+            <PanelLeftClose size={16} />
         </button>
       </div>
 
       {/* Cloud Status */}
-      <div className="px-4 py-3 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
+      <div className="px-3 py-1.5 border-b border-gray-100 bg-white/50 backdrop-blur-sm scale-90 origin-left w-[110%]">
           <CloudIndicator />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden py-2">
+      <div className="flex-1 flex flex-col overflow-hidden py-1">
         {/* Navigation - Dashboard */}
-        <div className="px-2 mb-2">
+        <div className="px-2 mb-1">
             <button 
                 onClick={() => {
                     setActiveSpaceId(DASHBOARD_VIEW_ID);
                     setActiveListId(null);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-200
                     ${activeSpaceId === DASHBOARD_VIEW_ID ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100 hover:border-indigo-200 hover:shadow-sm border border-transparent'}
                 `}
             >
-                <LayoutDashboard size={18} />
+                <LayoutDashboard size={16} />
                 Dashboard
             </button>
         </div>
 
         {/* Workspace / Spaces Header */}
-        <div className="px-4 mb-1 flex items-center justify-between">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Spaces</div>
+        <div className="px-3 mb-0.5 flex items-center justify-between">
+            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Spaces</div>
             <button 
                 onClick={() => setIsCreatingSpace(true)}
                 className="text-gray-400 hover:text-indigo-600 transition-colors"
                 title="Create New Space"
             >
-                <Plus size={16}/>
+                <Plus size={14}/>
             </button>
         </div>
 
         {/* Spaces List */}
-        <div className="flex-1 overflow-y-auto no-scrollbar px-2 space-y-2">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-2 space-y-0.5">
             {spaces.map(space => {
-                const sidebarWidth = "w-64"; // Reduced from w-80lists.filter(l => l.spaceId === space.id);
                 const spaceLists = lists.filter(l => l.spaceId === space.id);
                 const isCollapsed = collapsedSpaces.has(space.id);
                 const isActive = activeSpaceId === space.id;
 
                 return (
-                    <div key={space.id} className="space-y-1">
-                        <div className="group flex items-center gap-1 pr-1">
+                    <div key={space.id} className="space-y-0.5">
+                        <div className="group flex items-center gap-0.5 pr-1">
                             <button
                                 onClick={() => {
                                     setActiveSpaceId(space.id);
                                     if(isCollapsed) toggleSpace(space.id);
                                 }}
-                                className={`flex-1 flex items-center gap-2 px-2 py-1 rounded-md text-sm transition-all duration-200
+                                className={`flex-1 flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm transition-all duration-200
                                     ${isActive ? 'text-indigo-700 font-medium bg-indigo-50/50' : 'text-gray-600 hover:bg-gray-100 hover:border-indigo-200 border border-transparent'}
                                 `}
                             >
@@ -191,26 +190,26 @@ export const Sidebar: React.FC = () => {
                                     onClick={(e) => { e.stopPropagation(); toggleSpace(space.id); }}
                                     className="p-0.5 rounded hover:bg-black/5 text-gray-400"
                                 >
-                                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                    {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                                 </div>
-                                <span className="text-base">{space.icon}</span>
-                                <span className="truncate flex-1 text-left">{space.name}</span>
+                                <span className="text-sm">{space.icon}</span>
+                                <span className="truncate flex-1 text-left text-xs">{space.name}</span>
                             </button>
                              <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenEditSpace(space.id, space.name);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-all duration-200 hover:border-gray-300 border border-transparent"
+                                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-all duration-200 hover:border-gray-300 border border-transparent opacity-0 group-hover:opacity-100"
                                 title="Space Settings"
                             >
-                                <Cog size={13} />
+                                <Cog size={12} />
                             </button>
                         </div>
 
                         {/* Modules in Space */}
                         {!isCollapsed && (
-                            <div className="ml-7 space-y-0.5 border-l border-gray-200 pl-2">
+                            <div className="ml-5 space-y-0.5 border-l border-gray-200 pl-1">
                                 {spaceLists.map(list => (
                                     <div key={list.id} className="relative group/item w-full flex items-center">
                                         <button
@@ -218,7 +217,7 @@ export const Sidebar: React.FC = () => {
                                                 setActiveSpaceId(space.id);
                                                 setActiveListId(list.id);
                                             }}
-                                            className={`flex-1 flex items-center gap-2 px-2 py-1 rounded-md text-sm transition-all duration-200
+                                            className={`flex-1 flex items-center gap-2 px-2 py-0.5 rounded-md text-xs transition-all duration-200
                                                 ${activeListId === list.id ? 'bg-gray-200 text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 hover:border-indigo-200 border border-transparent'}
                                             `}
                                         >
@@ -232,10 +231,10 @@ export const Sidebar: React.FC = () => {
                                                 e.stopPropagation();
                                                 handleDeleteModule(list.id);
                                             }}
-                                            className={`p-1 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 hover:border-red-200 border border-transparent flex-shrink-0 ${activeListId === list.id ? 'opacity-100' : 'opacity-0 group-hover/item:opacity-100'}`}
+                                            className={`p-0.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 hover:border-red-200 border border-transparent flex-shrink-0 ${activeListId === list.id ? 'opacity-100' : 'opacity-0 group-hover/item:opacity-100'}`}
                                             title="Delete Module"
                                         >
-                                            <Trash2 size={12} />
+                                            <Trash2 size={10} />
                                         </button>
                                     </div>
                                 ))}
@@ -245,9 +244,9 @@ export const Sidebar: React.FC = () => {
                                         setNewModuleName('');
                                         setSelectedModuleType(ModuleType.TASKS);
                                     }}
-                                    className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent"
+                                    className="w-full flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent"
                                 >
-                                    <Plus size={12} /> Add Module
+                                    <Plus size={10} /> Add Module
                                 </button>
                             </div>
                         )}
@@ -258,37 +257,37 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* User / Bottom Actions */}
-      <div className="p-4 border-t border-gray-200 bg-white space-y-0.5 shrink-0">
-        <button className="flex items-center gap-3 w-full text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent">
-            <Search size={18} />
+      <div className="p-2 border-t border-gray-200 bg-white space-y-0.5 shrink-0">
+        <button className="flex items-center gap-2 w-full text-xs text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent">
+            <Search size={14} />
             Search
         </button>
         <div className="relative">
             <button 
                 ref={notifButtonRef}
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`flex items-center gap-3 w-full text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent ${showNotifications ? 'bg-gray-100' : ''}`}
+                className={`flex items-center gap-2 w-full text-xs text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent ${showNotifications ? 'bg-gray-100' : ''}`}
             >
                 <div className="relative">
-                    <Bell size={18} />
+                    <Bell size={14} />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                     )}
                 </div>
                 Notifications
             </button>
             {/* Notification Popover */}
             {showNotifications && (
-                <div className="absolute bottom-full left-0 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 mb-2 overflow-hidden z-50 flex flex-col animate-[fadeIn_0.1s_ease-out]">
-                    <div className="flex items-center justify-between p-3 border-b border-gray-100 bg-gray-50">
-                        <h3 className="font-bold text-gray-700 text-sm">Notifications</h3>
+                <div className="absolute bottom-full left-0 w-72 bg-white rounded-xl shadow-2xl border border-gray-200 mb-2 overflow-hidden z-50 flex flex-col animate-[fadeIn_0.1s_ease-out]">
+                    <div className="flex items-center justify-between p-2 border-b border-gray-100 bg-gray-50">
+                        <h3 className="font-bold text-gray-700 text-xs">Notifications</h3>
                         {notifications.length > 0 && (
-                            <button onClick={clearAllNotifications} className="text-xs text-gray-400 hover:text-gray-600">Clear All</button>
+                            <button onClick={clearAllNotifications} className="text-[10px] text-gray-400 hover:text-gray-600">Clear All</button>
                         )}
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                         {notifications.length === 0 ? (
-                            <div className="p-6 text-center text-gray-400 text-xs">No notifications</div>
+                            <div className="p-4 text-center text-gray-400 text-[10px]">No notifications</div>
                         ) : (
                             notifications.map(n => (
                                 <div 
@@ -300,18 +299,18 @@ export const Sidebar: React.FC = () => {
                                             setShowNotifications(false);
                                         }
                                     }}
-                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50' : ''}`}
+                                    className={`p-2 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50' : ''}`}
                                 >
-                                    <div className="flex items-start gap-3">
-                                        <div className={`mt-1 p-1.5 rounded-full ${n.type === 'reminder' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
-                                            <Clock size={12} />
+                                    <div className="flex items-start gap-2">
+                                        <div className={`mt-0.5 p-1 rounded-full ${n.type === 'reminder' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
+                                            <Clock size={10} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className={`text-xs ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
-                                            <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
-                                            <p className="text-[10px] text-gray-400 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
+                                            <p className={`text-[11px] ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>{n.title}</p>
+                                            <p className="text-[10px] text-gray-500 line-clamp-2 leading-tight">{n.message}</p>
+                                            <p className="text-[9px] text-gray-400 mt-0.5">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
-                                        {!n.read && <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></div>}
+                                        {!n.read && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1"></div>}
                                     </div>
                                 </div>
                             ))
@@ -322,16 +321,16 @@ export const Sidebar: React.FC = () => {
         </div>
         <button 
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-3 w-full text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent"
+            className="flex items-center gap-2 w-full text-xs text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-all duration-200 hover:border-gray-200 border border-transparent"
         >
-            <Settings size={18} />
+            <Settings size={14} />
             Settings
         </button>
         <button 
             onClick={logout}
-            className="flex items-center gap-3 w-full text-sm text-rose-600 hover:text-rose-800 px-2 py-1 rounded hover:bg-rose-50 mt-1 border-t border-gray-100 pt-2 transition-all duration-200 hover:border-rose-200 border border-transparent"
+            className="flex items-center gap-2 w-full text-xs text-rose-600 hover:text-rose-800 px-2 py-1 rounded hover:bg-rose-50 mt-0.5 border-t border-gray-100 pt-1.5 transition-all duration-200 hover:border-rose-200 border border-transparent"
         >
-            <LogOut size={18} />
+            <LogOut size={14} />
             Sign Out
         </button>
       </div>
