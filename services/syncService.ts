@@ -48,6 +48,9 @@ export const SyncService = {
     // ------------------------------------------------------------------
     // TASKS & FINANCE (Local -> Cloud)
     // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // TASKS & FINANCE & CONTENT (Local -> Cloud)
+    // ------------------------------------------------------------------
     pushExecutionData: async () => {
         try {
             // TASKS
@@ -69,6 +72,41 @@ export const SyncService = {
                     await dbLocal.finance.update(f.id, { sync_status: 'synced' });
                 }
             }
+
+            // CREATIVE ARTIFACTS (Ebooks)
+            const pendingArtifacts = await dbLocal.creative_artifacts.toArray(); 
+            // Note: creative_artifacts table might not have sync_status index or field in all types, 
+            // but we can check if we want to add it. For now, let's just Upsert all that match 'pending' 
+            // OR if we assume all local changes initiate a sync. 
+            // Ideally we should add 'sync_status' to CreativeArtifact type in Dexie if not present.
+            // Looking at standard 'addItem', we usually send it.
+            // Let's iterate all for now or filter if we can. 
+            // Actually, Dexie definition for creative_artifacts is 'id, type'. No sync_status index.
+            // But the object might have it.
+            // Let's try to filter in JS for safety in case index is missing.
+            const allArtifacts = await dbLocal.creative_artifacts.toArray();
+            const pendingArts = allArtifacts.filter((a: any) => !a.sync_status || a.sync_status === 'pending');
+            
+            for (const a of pendingArts) {
+                const { sync_status, ...artData } = a as any;
+                const { error } = await supabase.from('creative_artifacts').upsert(artData);
+                if (!error) {
+                    await dbLocal.creative_artifacts.update(a.id, { sync_status: 'synced' } as any);
+                }
+            }
+
+            // FOLDER ITEMS
+            const allFolders = await dbLocal.folder_items.toArray();
+            const pendingFolders = allFolders.filter((f: any) => !f.sync_status || f.sync_status === 'pending');
+            
+            for (const f of pendingFolders) {
+                const { sync_status, ...folderData } = f as any;
+                const { error } = await supabase.from('folder_items').upsert(folderData);
+                if (!error) {
+                    await dbLocal.folder_items.update(f.id, { sync_status: 'synced' } as any);
+                }
+            }
+
         } catch (e) {
             console.error("Sync Execution Data Error:", e);
         }
@@ -98,6 +136,161 @@ export const SyncService = {
             }
         } catch (e) {
             console.error("Sync Reference Data Error:", e);
+        }
+    },
+
+
+    // ------------------------------------------------------------------
+    // GENERAL MODULES (Spaces, Lists, Products, etc.)
+    // ------------------------------------------------------------------
+    syncGeneralModules: async () => {
+        try {
+            // SPACES (Direct Map)
+            const pendingSpaces = await dbLocal.spaces.toArray(); // Add sync_status check if column exists
+            // Assuming we act on all for now or filter "pending" if added. 
+            // Dexie schema for spaces is just 'id'. We typically blindly upsert or need a diff.
+            // Let's assume naive upsert for now to "Enable" it.
+            for (const s of pendingSpaces) {
+                 await supabase.from('spaces').upsert(s);
+            }
+
+            // LISTS (Map spaceId -> space_id)
+            const pendingLists = await dbLocal.lists.toArray();
+            for (const l of pendingLists) {
+                const { spaceId, customFields, ...rest } = l as any;
+                const dbList = {
+                    ...rest,
+                    space_id: spaceId,
+                    custom_fields: customFields
+                };
+                await supabase.from('lists').upsert(dbList);
+            }
+
+            // PRODUCTS (Direct Map mostly, check arrays)
+            const pendingProducts = await dbLocal.products.toArray();
+            for (const p of pendingProducts) {
+                const { stockCount, ...rest } = p as any;
+                const dbProd = {
+                    ...rest,
+                    stock_count: stockCount
+                    // categories is string[] -> text[] (automatic usually)
+                };
+                await supabase.from('products').upsert(dbProd);
+            }
+
+            // NOTIFICATIONS
+            const pendingNotifs = await dbLocal.notifications.toArray();
+            for (const n of pendingNotifs) {
+                const { linkTaskId, ...rest } = n as any;
+                await supabase.from('notifications').upsert({
+                    ...rest,
+                    link_task_id: linkTaskId
+                });
+            }
+
+
+            // TEMPLATES
+            const pendingTemplates = await dbLocal.templates.toArray();
+            for (const t of pendingTemplates) {
+                const { customFieldValues, ...rest } = t as any;
+                await supabase.from('templates').upsert({
+                    ...rest,
+                    custom_field_values: customFieldValues
+                });
+            }
+
+            // --------------------------------------------------------------
+            // PULL (Cloud -> Local)
+            // --------------------------------------------------------------
+            
+            // SPACES
+            const { data: cloudSpaces } = await supabase.from('spaces').select('*');
+            if(cloudSpaces) {
+                await dbLocal.spaces.bulkPut(cloudSpaces);
+            }
+
+            // LISTS
+            const { data: cloudLists } = await supabase.from('lists').select('*');
+            if(cloudLists) {
+                const mappedLists = cloudLists.map(l => ({
+                    ...l, // has snake_case
+                    spaceId: l.space_id,
+                    customFields: l.custom_fields,
+                    // Remove snake_case keys if strict, but Dexie ignores extras usually. 
+                    // Let's keep it simple.
+                    space_id: undefined, 
+                    custom_fields: undefined
+                }));
+                await dbLocal.lists.bulkPut(mappedLists as any);
+            }
+
+            // PRODUCTS
+            const { data: cloudProducts } = await supabase.from('products').select('*');
+            if(cloudProducts) {
+                const mappedProds = cloudProducts.map(p => ({
+                    ...p,
+                    stockCount: p.stock_count,
+                    stock_count: undefined
+                }));
+                await dbLocal.products.bulkPut(mappedProds as any);
+            }
+
+            // NOTIFICATIONS
+            const { data: cloudNotifs } = await supabase.from('notifications').select('*');
+            if(cloudNotifs) {
+                const mappedNotifs = cloudNotifs.map(n => ({
+                    ...n,
+                    linkTaskId: n.link_task_id,
+                    link_task_id: undefined
+                }));
+                await dbLocal.notifications.bulkPut(mappedNotifs as any);
+            }
+
+            // TEMPLATES
+            const { data: cloudTemplates } = await supabase.from('templates').select('*');
+            if(cloudTemplates) {
+                const mappedTemplates = cloudTemplates.map(t => ({
+                    ...t,
+                    customFieldValues: t.custom_field_values,
+                    custom_field_values: undefined
+                }));
+                await dbLocal.templates.bulkPut(mappedTemplates as any);
+            }
+
+        } catch (e) {
+            console.error("Sync General Modules Error:", e);
+        }
+    },
+
+    // ------------------------------------------------------------------
+    // DISPATCHER
+    // ------------------------------------------------------------------
+    triggerSync: async (storeName: string) => {
+        // Group syncs
+        switch (storeName) {
+            case 'projects':
+                await SyncService.syncProjects();
+                break;
+            case 'tasks':
+            case 'finance':
+            case 'creative_artifacts':
+            case 'folder_items':
+                await SyncService.pushExecutionData();
+                break;
+            case 'spaces':
+            case 'lists':
+            case 'products':
+            case 'notifications':
+            case 'templates':
+                await SyncService.syncGeneralModules();
+                break;
+            case 'settings':
+                // Do not sync settings (auth tokens)
+                break;
+            default:
+                // Try general
+                await SyncService.syncGeneralModules();
+                break;
         }
     },
 
@@ -152,12 +345,46 @@ export const SyncService = {
                     break;
                 case 'creative_artifacts':
                     if (eventType === 'DELETE') await dbLocal.creative_artifacts.delete(oldRecord.id);
-                    else await dbLocal.creative_artifacts.put({ ...newRecord, sync_status: 'synced' }); // Assuming compatible
+                    else await dbLocal.creative_artifacts.put({ ...newRecord, sync_status: 'synced' }); 
                     break;
                 case 'folder_items':
                     if (eventType === 'DELETE') await dbLocal.folder_items.delete(oldRecord.id);
                     else await dbLocal.folder_items.put({ ...newRecord, sync_status: 'synced' });
                     break;
+                // General Modules Mappers
+                case 'spaces':
+                    if (eventType === 'DELETE') await dbLocal.spaces.delete(oldRecord.id);
+                    else await dbLocal.spaces.put(newRecord as any); 
+                    break;
+                case 'lists':
+                    if (eventType === 'DELETE') await dbLocal.lists.delete(oldRecord.id);
+                    else {
+                        const { space_id, custom_fields, ...rest } = newRecord;
+                        await dbLocal.lists.put({ ...rest, spaceId: space_id, customFields: custom_fields } as any);
+                    }
+                    break;
+                 case 'products':
+                    if (eventType === 'DELETE') await dbLocal.products.delete(oldRecord.id);
+                    else {
+                         const { stock_count, ...rest } = newRecord;
+                         await dbLocal.products.put({ ...rest, stockCount: stock_count } as any);
+                    }
+                    break;
+                 case 'notifications':
+                    if (eventType === 'DELETE') await dbLocal.notifications.delete(oldRecord.id);
+                    else {
+                        const { link_task_id, ...rest } = newRecord;
+                        await dbLocal.notifications.put({ ...rest, linkTaskId: link_task_id } as any);
+                    }
+                    break;
+                 case 'templates':
+                    if (eventType === 'DELETE') await dbLocal.templates.delete(oldRecord.id);
+                    else {
+                        const { custom_field_values, ...rest } = newRecord;
+                        await dbLocal.templates.put({ ...rest, customFieldValues: custom_field_values } as any);
+                    }
+                    break;
+
                 // Add reference tables if needed
                 case 'inventario_activos':
                     if (eventType === 'DELETE') await dbLocal.inventory.delete(oldRecord.id);

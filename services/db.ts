@@ -1,5 +1,6 @@
 
 import { dbLocal } from './dexieDb';
+import { SyncService } from './syncService';
 
 export const STORES = {
   SPACES: 'spaces',
@@ -51,16 +52,19 @@ export const dbService = {
   addItem: async <T>(storeName: string, item: T): Promise<void> => {
     const table = getTable(storeName);
     await (table as any).put(item); // Cast to any to handle different key types
+    SyncService.triggerSync(storeName);
   },
 
   updateItem: async <T>(storeName: string, id: string | number, updates: Partial<T>): Promise<void> => {
     const table = getTable(storeName);
     await (table as any).update(id, updates); // Cast to any
+    SyncService.triggerSync(storeName);
   },
 
   deleteItem: async (storeName: string, id: string | number): Promise<void> => {
     const table = getTable(storeName);
     await (table as any).delete(id); // Cast to any
+    SyncService.triggerSync(storeName);
   },
 
   getAuthToken: async (): Promise<string | null> => {

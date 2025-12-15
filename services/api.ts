@@ -278,15 +278,18 @@ export const CreativeArtifactsAPI = {
     },
     create: async (item: Omit<CreativeArtifact, 'id'>) => {
         const newId = crypto.randomUUID();
-        await dbLocal.creative_artifacts.add({ ...item, id: newId });
+        await dbLocal.creative_artifacts.add({ ...item, id: newId, sync_status: 'pending' } as any);
+        SyncService.pushExecutionData();
         return { ...item, id: newId } as CreativeArtifact;
     },
     update: async (id: string, updates: Partial<CreativeArtifact>) => {
-        await dbLocal.creative_artifacts.update(id, updates);
+        await dbLocal.creative_artifacts.update(id, { ...updates, sync_status: 'pending' } as any);
+        SyncService.pushExecutionData();
         return { id, ...updates };
     },
     delete: async (id: string) => {
         await dbLocal.creative_artifacts.delete(id);
+        try { await supabase.from('creative_artifacts').delete().eq('id', id); } catch(e) {}
     }
 };
 
@@ -300,16 +303,20 @@ export const FolderItemsAPI = {
         const itemToStore = {
             ...item,
             id: newId,
-            updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt
+            updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt,
+            sync_status: 'pending'
         };
         await dbLocal.folder_items.add(itemToStore as any); 
+        SyncService.pushExecutionData();
         return { ...item, id: newId } as FolderItem;
     },
     update: async (id: string, updates: Partial<FolderItem>) => {
-         await dbLocal.folder_items.update(id, updates as any);
+         await dbLocal.folder_items.update(id, { ...updates, sync_status: 'pending' } as any);
+         SyncService.pushExecutionData();
          return { id, ...updates };
     },
     delete: async (id: string) => {
         await dbLocal.folder_items.delete(id);
+        try { await supabase.from('folder_items').delete().eq('id', id); } catch(e) {}
     }
 };
