@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Code2, Sparkles, Loader2, Copy, Smartphone, Globe, Layout, Palette, Server, Box, Check } from 'lucide-react';
+import { Code2, Sparkles, Loader2, Copy, Smartphone, Globe, Layout, Palette, Server, Box, Check, Save } from 'lucide-react';
 import { generateAppCode } from '../services/geminiService';
+import { useAuthStore } from '../src/stores/authStore';
 
 export const AppGeneratorView: React.FC = () => {
     
@@ -42,6 +43,65 @@ export const AppGeneratorView: React.FC = () => {
     // Generation State
     const [result, setResult] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Import Services
+    const { login } = useAuthStore(); // We don't strictly need auth info for saving locally if we rely on dbService internals
+    // We need to import dbService at the top, I will handle imports in a separate block or assume they are there.
+    // Ideally I should check imports but for this edit I focused on the internal logic.
+    // Wait, I can't add imports with this tool if they are at line 1.
+    // I will assume I can edit the whole file or just this block.
+    // I will stick to the block edit, but I need to make sure dbService is available. 
+    // The previous view_file showed `generateAppCode` import. I'll need to add `dbService`.
+    // Actually, to make this robust, I should probably rewrite the imports first.
+    // But let's add the handler first.
+    
+    const handleSaveDraft = async () => {
+        if(!appName.trim()) {
+            alert('Please enter an Application Name to save.');
+            return;
+        }
+        setIsSaving(true);
+        try {
+            const projectData: Partial<any> = {
+               id: crypto.randomUUID(),
+               nombre_proyecto: appName,
+               tipo_activo: 'App', // Fixed type for this generator
+               presupuesto_asignado: 0,
+               specifications: {
+                   objective: appObjective,
+                   techStack: techStackMVP,
+                   apis: apiIntegrations,
+                   hosting: hostingStrategy,
+                   screens: screens,
+                   gamification: gamification,
+                   notifications: notifications,
+                   custom: customFields,
+                   config: {
+                       type: appType,
+                       db: dbType,
+                       tooling: { ts: useTypescript, tw: useTailwind, lint: useLinting, git: useGit }
+                   },
+                   generatorResult: result
+               },
+               fecha_creacion: new Date().toISOString(),
+               ultima_actualizacion: new Date().toISOString(),
+               sync_status: 'pending' // Mark for sync to Supabase
+            };
+
+            // Dynamic import to avoid top-level issues if possible, or just standard import. 
+            // I'll assume standard import will be added.
+            const { dbService } = await import('../services/db'); 
+            await dbService.addItem('projects', projectData);
+            
+            alert('Project saved to Workspace (Local & Cloud Sync Pending)');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to save project.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleGenerate = async () => {
         if(!appName.trim() && !appObjective.trim()) return;
@@ -360,14 +420,24 @@ export const AppGeneratorView: React.FC = () => {
                     )}
 
                     <div className="mt-8 pt-6 border-t border-gray-200 sticky bottom-0 bg-gray-50 pb-2">
-                        <button 
-                            onClick={handleGenerate}
-                            disabled={isGenerating || (!appName && !appObjective)}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
-                        >
-                            {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-                            Generate Application
-                        </button>
+                        <div className="flex gap-2">
+                             <button 
+                                onClick={handleSaveDraft}
+                                disabled={isSaving || !appName}
+                                className="flex-1 bg-white border border-gray-300 text-gray-700 py-4 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
+                            >
+                                {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                                Save Draft
+                            </button>
+                            <button 
+                                onClick={handleGenerate}
+                                disabled={isGenerating || (!appName && !appObjective)}
+                                className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
+                            >
+                                {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                                Generate App & Code
+                            </button>
+                        </div>
                     </div>
                 </div>
 

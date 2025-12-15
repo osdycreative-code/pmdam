@@ -65,6 +65,7 @@ export interface LocalProject {
     fecha_creacion: string;
     ultima_actualizacion: string;
     sync_status?: 'pending' | 'synced';
+    specifications?: any; // Stores app specifications (phases, config, etc.)
 }
 
 export interface LocalTask extends Omit<Tarea, 'id'> {
