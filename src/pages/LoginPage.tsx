@@ -1,22 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import axios, { AxiosError } from 'axios';
-// import { useNavigate } from 'react-router-dom'; // Commented out as react-router-dom is not installed
-import { useAuthStore } from '../stores/authStore'; // Hook simulado para estado global
+import { supabase } from '../../services/supabaseClient';
+// import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../stores/authStore';
 import { dbService } from '../../services/db';
 
-// Shim for useNavigate since react-router-dom is not present in package.json
+// Shim for useNavigate
 const useNavigate = () => {
     return (path: string) => {
         console.log(`Navigating to ${path}`);
-        // In a single page app without router, we might just reload or change hash
-        // For now, force reload to '/' which will trigger App.tsx to check auth token
         window.location.href = path === '/app' ? '/' : path;
     };
 };
-
-// --- INTERFACES Y CONFIGURACIÓN ---
-
-const API_BASE_URL = 'http://localhost:3000/api/auth/login';
 
 interface LoginFormState {
   email: string;
@@ -28,61 +22,49 @@ interface ValidationErrors {
   password?: string;
 }
 
-// --- UTILIDADES ---
-
+// --- UTILS ---
 const isValidEmail = (email: string): boolean => {
-  // Regex de validación de email simple
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-// --- COMPONENTE PRINCIPAL ---
-
+// --- MAIN COMPONENT ---
 const LoginPage: React.FC = () => {
   const [formState, setFormState] = useState<LoginFormState>({ email: '', password: '' });
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [apiSuccess, setApiSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false); // Toggle state
   
   const navigate = useNavigate();
-  const authStore = useAuthStore(); // Asume que este hook guarda el token globalmente
+  const authStore = useAuthStore();
 
-  /**
-   * Valida el formulario antes del envío.
-   */
   const validateForm = useCallback((state: LoginFormState): ValidationErrors => {
     const errors: ValidationErrors = {};
-    
     if (!state.email) {
       errors.email = 'El email es requerido.';
     } else if (!isValidEmail(state.email)) {
       errors.email = 'El formato del email no es válido.';
     }
-    
     if (!state.password) {
       errors.password = 'La contraseña es requerida.';
+    } else if (state.password.length < 6) {
+        errors.password = 'La contraseña debe tener al menos 6 caracteres.';
     }
-    
     return errors;
   }, []);
 
-  /**
-   * Maneja los cambios en los campos de entrada.
-   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormState(prev => ({ ...prev, [name]: value }));
-    // Limpia errores de validación en el cambio
     setValidationErrors({});
     setApiError(null);
+    setApiSuccess(null);
   };
 
-  /**
-   * 🔑 Maneja el envío del formulario e interacción con el endpoint JWT.
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors = validateForm(formState);
-    
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
@@ -90,52 +72,65 @@ const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     setApiError(null);
+    setApiSuccess(null);
 
     try {
-      const response = await axios.post<{ access_token: string }>(
-        API_BASE_URL,
-        formState
-      );
-      
-      const token = response.data.access_token;
-      
-      // *** 🔑 GESTIÓN DEL JWT CLAVE ***
-      
-      // 1. Almacenar el token de acceso (Modificado para usar DB local en lugar de localStorage)
-      await dbService.saveAuthToken(token);
-      
-      // 2. Configurar Axios para enviar el token automáticamente en futuras peticiones
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // 3. (Opcional) Actualizar el estado global de la aplicación
-      // Nota: authStore.login ya interactúa con dbService en nuestra implementación, pero mantenemos la llamada
-      await authStore.login(token); 
+        if (isRegistering) {
+            // --- SIGN UP ---
+            const { data, error } = await supabase.auth.signUp({
+                email: formState.email,
+                password: formState.password,
+            });
 
-      console.log("Inicio de sesión exitoso. Redirigiendo...");
-      navigate('/app'); // Redirigir al dashboard principal
+            if (error) throw error;
 
-    } catch (error) {
-      const err = error as AxiosError<{ message?: string }>;
-      
-      if (err.response && err.response.status === 401) {
-        setApiError('Credenciales inválidas. Por favor, verifica tu email y contraseña.');
-      } else {
-        // Log error details for debugging
-        console.error("Login Error:", err);
-        setApiError('Ha ocurrido un error en el servidor. Inténtalo de nuevo.');
-      }
-      
+            if (data.user && !data.session) {
+                setApiSuccess('Cuenta creada exitosamente. ¡Revisa tu email para confirmar!');
+                // Optional: switch back to login or stay here
+            } else if (data.session) {
+                // Auto-login if confirmation not required
+                 await handleLoginSuccess(data.session.access_token);
+            }
+
+        } else {
+            // --- LOGIN ---
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: formState.email,
+                password: formState.password,
+            });
+
+            if (error) throw error;
+
+            if (data.session) {
+                await handleLoginSuccess(data.session.access_token);
+            }
+        }
+
+    } catch (error: any) {
+        console.error("Auth Error:", error);
+        setApiError(error.message || 'Ha ocurrido un error. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleLoginSuccess = async (token: string) => {
+      // 1. Store locally
+      await dbService.saveAuthToken(token);
+      // 2. Update store
+      await authStore.login(token);
+      
+      console.log("Inicio de sesión exitoso. Redirigiendo...");
+      navigate('/app');
+  };
+
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Iniciar Sesión en Plataforma</h2>
+      <h2 style={styles.title}>
+          {isRegistering ? 'Crear Nueva Cuenta' : 'Iniciar Sesión'}
+      </h2>
       <form onSubmit={handleSubmit} style={styles.form}>
         
-        {/* Campo de Email */}
         <label htmlFor="email" style={styles.label}>Email:</label>
         <input
           type="email"
@@ -148,7 +143,6 @@ const LoginPage: React.FC = () => {
         />
         {validationErrors.email && <p style={styles.errorText}>{validationErrors.email}</p>}
 
-        {/* Campo de Contraseña */}
         <label htmlFor="password" style={styles.label}>Contraseña:</label>
         <input
           type="password"
@@ -161,23 +155,34 @@ const LoginPage: React.FC = () => {
         />
         {validationErrors.password && <p style={styles.errorText}>{validationErrors.password}</p>}
         
-        {/* Mensaje de Error de API */}
         {apiError && <div style={styles.apiErrorBox}>{apiError}</div>}
+        {apiSuccess && <div style={styles.apiSuccessBox}>{apiSuccess}</div>}
 
-        {/* Botón de Envío */}
         <button 
           type="submit" 
-          disabled={isLoading || Object.keys(validateForm(formState)).length > 0}
+          disabled={isLoading}
           style={styles.button}
         >
-          {isLoading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
+          {isLoading ? 'Procesando...' : (isRegistering ? 'Registrarse' : 'Iniciar Sesión')}
         </button>
+
+        <div style={styles.footerLink}>
+            <button 
+                type="button" 
+                onClick={() => setIsRegistering(!isRegistering)}
+                style={styles.linkButton}
+            >
+                {isRegistering 
+                    ? '¿Ya tienes cuenta? Inicia sesión aquí' 
+                    : '¿No tienes cuenta? Regístrate aquí'}
+            </button>
+        </div>
       </form>
     </div>
   );
 };
 
-// --- ESTILOS BÁSICOS (Para simular la UI) ---
+// --- STYLES ---
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
@@ -234,7 +239,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: 'background-color 0.3s',
     height: '40px',
     display: 'flex',
-    alignItems: 'center',
+      alignItems: 'center',
     justifyContent: 'center',
   },
   errorText: {
@@ -252,6 +257,31 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: '15px',
     textAlign: 'center',
     fontSize: '13px',
+  },
+  apiSuccessBox: {
+    padding: '8px',
+    backgroundColor: '#d4edda',
+    color: '#155724',
+    border: '1px solid #c3e6cb',
+    borderRadius: '4px',
+    marginTop: '15px',
+    textAlign: 'center',
+    fontSize: '13px',
+  },
+  footerLink: {
+      marginTop: '20px',
+      textAlign: 'center',
+      fontSize: '14px',
+  },
+  linkButton: {
+      background: 'none',
+      border: 'none',
+      color: '#007bff',
+      cursor: 'pointer',
+      textDecoration: 'underline',
+      padding: 0,
+      fontFamily: 'inherit',
+      fontSize: 'inherit',
   }
 };
 
