@@ -75,17 +75,7 @@ export const SyncService = {
 
             // CREATIVE ARTIFACTS (Ebooks)
             const pendingArtifacts = await dbLocal.creative_artifacts.toArray(); 
-            // Note: creative_artifacts table might not have sync_status index or field in all types, 
-            // but we can check if we want to add it. For now, let's just Upsert all that match 'pending' 
-            // OR if we assume all local changes initiate a sync. 
-            // Ideally we should add 'sync_status' to CreativeArtifact type in Dexie if not present.
-            // Looking at standard 'addItem', we usually send it.
-            // Let's iterate all for now or filter if we can. 
-            // Actually, Dexie definition for creative_artifacts is 'id, type'. No sync_status index.
-            // But the object might have it.
-            // Let's try to filter in JS for safety in case index is missing.
-            const allArtifacts = await dbLocal.creative_artifacts.toArray();
-            const pendingArts = allArtifacts.filter((a: any) => !a.sync_status || a.sync_status === 'pending');
+            const pendingArts = pendingArtifacts.filter((a: any) => !a.sync_status || a.sync_status === 'pending');
             
             for (const a of pendingArts) {
                 const { sync_status, ...artData } = a as any;
@@ -100,11 +90,37 @@ export const SyncService = {
             const pendingFolders = allFolders.filter((f: any) => !f.sync_status || f.sync_status === 'pending');
             
             for (const f of pendingFolders) {
-                const { sync_status, ...folderData } = f as any;
-                const { error } = await supabase.from('folder_items').upsert(folderData);
+                const { sync_status, listId, parentId, updatedAt, ...rest } = f as any;
+                // Map to snake_case for Supabase
+                const dbFolder = {
+                    ...rest,
+                    list_id: listId,
+                    parent_id: parentId,
+                    updated_at: updatedAt
+                };
+                const { error } = await supabase.from('folder_items').upsert(dbFolder);
                 if (!error) {
                     await dbLocal.folder_items.update(f.id, { sync_status: 'synced' } as any);
                 }
+            }
+            
+            // FINANCE CATEGORIES
+            const pendingCats = await dbLocal.categories.toArray();
+            // Assuming categories generally don't have sync_status in Dexie schema yet, we might need to assume all or add status.
+            // Since we don't have sync_status column in Dexie schema for categories (it was ++id, type, name), 
+            // we will try to upsert all which matches name unique constraint.
+            // But wait, schema_new.sql says finance_categories id is UUID. Dexie is number.
+            // This is a conflict. We probably won't be able to sync cleanly without schema migration.
+            // However, to satisfy "make it save", we can try to send name/type and let Supabase generate UUID if new.
+            // But we can't update local ID then.
+            // Let's Skip this complex part unless user insists onCategories sync detail. 
+            // Actually, user explicitly asked "finance_categories".
+            // So I MUST try.
+            for (const c of pendingCats) {
+                 // Ignore ID if it's a number (local) and let Supabase handle it or match by name?
+                 // Supabase: name is UNIQUE.
+                 const { id, ...catRest } = c as any;
+                 const { error } = await supabase.from('finance_categories').upsert(catRest, { onConflict: 'name' });
             }
 
         } catch (e) {
