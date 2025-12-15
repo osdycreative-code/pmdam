@@ -13,7 +13,8 @@ export const STORES = {
   FOLDER_ITEMS: 'folder_items',
   NOTIFICATIONS: 'notifications',
   ACCOUNTS_PAYABLE: 'accounts_payable',
-  ACCOUNTS_RECEIVABLE: 'accounts_receivable'
+  ACCOUNTS_RECEIVABLE: 'accounts_receivable',
+  SETTINGS: 'settings'
 };
 
 const getTable = (storeName: string) => {
@@ -30,6 +31,7 @@ const getTable = (storeName: string) => {
         case STORES.NOTIFICATIONS: return dbLocal.notifications;
         case STORES.ACCOUNTS_PAYABLE: return dbLocal.accounts_payable;
         case STORES.ACCOUNTS_RECEIVABLE: return dbLocal.accounts_receivable;
+        case STORES.SETTINGS: return dbLocal.settings;
         default: throw new Error(`Unknown store: ${storeName}`);
     }
 };
@@ -62,15 +64,31 @@ export const dbService = {
   },
 
   getAuthToken: async (): Promise<string | null> => {
-    return localStorage.getItem('auth_token');
+    try {
+      const setting = await dbLocal.settings.get('auth_token');
+      return setting ? setting.value : null;
+    } catch (e) {
+      console.error('Error getting auth token from DB:', e);
+      return localStorage.getItem('auth_token'); // Fallback
+    }
   },
 
   saveAuthToken: async (token: string): Promise<void> => {
-    localStorage.setItem('auth_token', token);
+    try {
+      await dbLocal.settings.put({ key: 'auth_token', value: token });
+    } catch (e) {
+      console.error('Error saving auth token to DB:', e);
+      localStorage.setItem('auth_token', token); // Fallback
+    }
   },
 
   clearAuthToken: async (): Promise<void> => {
-    localStorage.removeItem('auth_token');
+    try {
+      await dbLocal.settings.delete('auth_token');
+    } catch (e) {
+      console.error('Error clearing auth token from DB:', e);
+      localStorage.removeItem('auth_token');
+    }
   },
 
   isEmpty: async (): Promise<boolean> => {

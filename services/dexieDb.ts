@@ -113,13 +113,15 @@ class PManLocalDB extends Dexie {
   products!: Table<any, string>;
   notifications!: Table<any, string>;
   templates!: Table<any, string>;
+  settings!: Table<LocalSetting, string>;
 
   constructor() {
     super('PManLocalDB');
     
     // UUID Schema (v7): "id" (primary key, string UUID) instead of "++id"
     // Version 8: Added spaces, lists, products, notifications, templates
-    this.version(8).stores({
+    // Version 9: Added settings for auth tokens and local config
+    this.version(9).stores({
       tasks: 'id, proyecto_id, estado, sync_status, es_subtarea_de_id',
       finance: 'id, proyecto_id, tipo_transaccion, sync_status',
       categories: '++id, type', // Keep simple for now unless synced
@@ -134,9 +136,15 @@ class PManLocalDB extends Dexie {
       lists: 'id, spaceId',
       products: 'id',
       notifications: 'id',
-      templates: 'id'
+      templates: 'id',
+      settings: 'key'
     });
   }
+}
+
+export interface LocalSetting {
+    key: string;
+    value: any;
 }
 
 export interface LocalSpace {

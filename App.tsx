@@ -12,7 +12,8 @@ import { AppGeneratorView } from './components/AppGeneratorView';
 import { FoldersView } from './components/FoldersView';
 import { DashboardView } from './components/DashboardView';
 import { MainDashboard } from './components/MainDashboard';
-import { LoginPage } from './components/LoginPage';
+import LoginPage from './src/pages/LoginPage';
+// import { LoginPage } from './components/LoginPage'; // Deprecated
 import EbookManager from './components/EbookManager';
 import { PersistenceProvider } from './src/context/CentralizedPersistenceContext';
 import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable } from './types';
@@ -825,7 +826,7 @@ const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+      return <LoginPage />;
   }
 
   if (isDbLoading) {
