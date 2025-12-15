@@ -26,7 +26,15 @@ export const AppGeneratorView: React.FC = () => {
 
     const [gamification, setGamification] = useState('');
     const [notifications, setNotifications] = useState('');
-    const [customFields, setCustomFields] = useState('');
+    
+    // Custom Fields State (Dynamic)
+    const [customFieldList, setCustomFieldList] = useState<{id: string; key: string; value: string}[]>([]);
+    
+    const addCustomField = () => setCustomFieldList([...customFieldList, { id: crypto.randomUUID(), key: '', value: '' }]);
+    const updateCustomField = (id: string, field: 'key' | 'value', val: string) => {
+        setCustomFieldList(customFieldList.map(f => f.id === id ? { ...f, [field]: val } : f));
+    };
+    const removeCustomField = (id: string) => setCustomFieldList(customFieldList.filter(f => f.id !== id));
 
     // --- APP CONFIGURATION STATE (Relocated) ---
     const [appName, setAppName] = useState('');
@@ -46,27 +54,20 @@ export const AppGeneratorView: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
 
     // Import Services
-    const { login } = useAuthStore(); // We don't strictly need auth info for saving locally if we rely on dbService internals
-    // We need to import dbService at the top, I will handle imports in a separate block or assume they are there.
-    // Ideally I should check imports but for this edit I focused on the internal logic.
-    // Wait, I can't add imports with this tool if they are at line 1.
-    // I will assume I can edit the whole file or just this block.
-    // I will stick to the block edit, but I need to make sure dbService is available. 
-    // The previous view_file showed `generateAppCode` import. I'll need to add `dbService`.
-    // Actually, to make this robust, I should probably rewrite the imports first.
-    // But let's add the handler first.
+    const { login } = useAuthStore(); 
     
     const handleSaveDraft = async () => {
         if(!appName.trim()) {
             alert('Please enter an Application Name to save.');
             return;
         }
+        setIsGenerating(true); // Re-using spinner state if needed or ensure isSaving is used
         setIsSaving(true);
         try {
             const projectData: Partial<any> = {
                id: crypto.randomUUID(),
                nombre_proyecto: appName,
-               tipo_activo: 'App', // Fixed type for this generator
+               tipo_activo: 'App', 
                presupuesto_asignado: 0,
                specifications: {
                    objective: appObjective,
@@ -76,7 +77,7 @@ export const AppGeneratorView: React.FC = () => {
                    screens: screens,
                    gamification: gamification,
                    notifications: notifications,
-                   custom: customFields,
+                   custom: customFieldList, // Save structured data
                    config: {
                        type: appType,
                        db: dbType,
@@ -86,11 +87,9 @@ export const AppGeneratorView: React.FC = () => {
                },
                fecha_creacion: new Date().toISOString(),
                ultima_actualizacion: new Date().toISOString(),
-               sync_status: 'pending' // Mark for sync to Supabase
+               sync_status: 'pending' 
             };
 
-            // Dynamic import to avoid top-level issues if possible, or just standard import. 
-            // I'll assume standard import will be added.
             const { dbService } = await import('../services/db'); 
             await dbService.addItem('projects', projectData);
             
@@ -100,6 +99,7 @@ export const AppGeneratorView: React.FC = () => {
             alert('Failed to save project.');
         } finally {
             setIsSaving(false);
+            setIsGenerating(false);
         }
     };
 
@@ -109,10 +109,13 @@ export const AppGeneratorView: React.FC = () => {
         setResult(null);
 
         // Construct structured prompt combining both submodules
+        const customFieldsStr = customFieldList.map(f => `${f.key}: ${f.value}`).join('; ');
+
         const prompt = `
             Create a project configuration and initial code structure based on the following specifications:
             
             PART 1: DEVELOPMENT PHASES & STRATEGY
+            - App Name: "${appName}"
             - Objective: "${appObjective}"
             - Tech Stack (MVP): "${techStackMVP}"
             - APIs / Integrations: "${apiIntegrations}"
@@ -120,7 +123,7 @@ export const AppGeneratorView: React.FC = () => {
             - Planned Screens: ${screens.map(s => `${s.name} (${s.description})`).join(', ')}
             - Gamification Strategy: "${gamification}"
             - Notifications Strategy: "${notifications}"
-            - Custom Notes: "${customFields}"
+            - Custom Fields / Metadata: "${customFieldsStr}"
 
             PART 2: TECHNICAL CONFIGURATION
             - Project Name: "${appName || 'Untitled App'}"
@@ -191,9 +194,20 @@ export const AppGeneratorView: React.FC = () => {
                                 <p className="text-sm text-gray-500">Define the roadmap, architecture, and core features.</p>
                             </div>
 
-                            {/* 1. App Objective */}
+                            {/* 1. App Name */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">1. App Objective</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">1. App Name</label>
+                                <input 
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm mb-2"
+                                    placeholder="e.g. My Awesome App"
+                                    value={appName}
+                                    onChange={e => setAppName(e.target.value)}
+                                />
+                            </div>
+
+                            {/* 2. App Objective */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">2. App Objective</label>
                                 <textarea 
                                     className="w-full h-20 p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none"
                                     placeholder="What is the main goal of this app?"
@@ -202,9 +216,9 @@ export const AppGeneratorView: React.FC = () => {
                                 />
                             </div>
 
-                            {/* 2. Technical Architecture */}
+                            {/* 3. Technical Architecture */}
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">2. Technical Architecture (MVP)</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">3. Technical Architecture (MVP)</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm mb-2"
                                     placeholder="Platform & Backend (e.g., Web + Node.js + PostgreSQL)"
@@ -213,10 +227,10 @@ export const AppGeneratorView: React.FC = () => {
                                 />
                             </div>
 
-                             {/* 3. APIs & Hosting */}
+                             {/* 4. APIs & Hosting */}
                              <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">3. APIs to Integrate</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">4. APIs to Integrate</label>
                                     <input 
                                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                         placeholder="Stripe, Google Maps..."
@@ -235,10 +249,10 @@ export const AppGeneratorView: React.FC = () => {
                                 </div>
                              </div>
 
-                             {/* 4. Screens */}
+                             {/* 5. Screens */}
                              <div>
                                 <div className="flex justify-between items-center mb-2">
-                                     <label className="block text-xs font-bold text-gray-500 uppercase">4. Screens / Views</label>
+                                     <label className="block text-xs font-bold text-gray-500 uppercase">5. Screens / Views</label>
                                      <button onClick={addScreen} className="text-xs text-blue-600 font-medium hover:underline">+ Add Screen</button>
                                 </div>
                                 <div className="space-y-3">
@@ -263,7 +277,7 @@ export const AppGeneratorView: React.FC = () => {
                                                     onClick={() => removeScreen(screen.id)}
                                                     className="absolute top-2 right-2 text-gray-300 hover:text-red-500"
                                                 >
-                                                    <Box size={14} className="rotate-45" /> {/* Using Box as X substitute if X not imported, or update import */}
+                                                    <Box size={14} className="rotate-45" /> 
                                                 </button>
                                             )}
                                             <span className="absolute -left-2 -top-2 w-5 h-5 flex items-center justify-center bg-gray-200 rounded-full text-[10px] font-bold text-gray-600">{index + 1}</span>
@@ -272,10 +286,10 @@ export const AppGeneratorView: React.FC = () => {
                                 </div>
                              </div>
 
-                             {/* 5, 6, 7 Remaining Fields */}
+                             {/* 6. Gamification & 7. Notifications */}
                              <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">5. Gamification Rules</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">6. Gamification Rules</label>
                                     <input 
                                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                         placeholder="Points, Badges, Leaderboards..."
@@ -284,7 +298,7 @@ export const AppGeneratorView: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">6. Notifications Strategy</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">7. Notifications Strategy</label>
                                     <input 
                                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                         placeholder="Email, Push, In-app..."
@@ -292,14 +306,39 @@ export const AppGeneratorView: React.FC = () => {
                                         onChange={e => setNotifications(e.target.value)}
                                     />
                                 </div>
+                                
+                                {/* 8. Custom Fields */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">7. Custom Fields / Notes</label>
-                                    <textarea 
-                                        className="w-full h-20 p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none"
-                                        placeholder="Any other specific fields or requirements..."
-                                        value={customFields}
-                                        onChange={e => setCustomFields(e.target.value)}
-                                    />
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase">8. Custom Fields / Metadata</label>
+                                        <button onClick={addCustomField} className="text-xs text-blue-600 font-medium hover:underline">+ Add Field</button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {customFieldList.map((field) => (
+                                            <div key={field.id} className="flex items-center gap-2">
+                                                <input 
+                                                    className="w-1/3 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="Key (e.g. Budget)"
+                                                    value={field.key}
+                                                    onChange={e => updateCustomField(field.id, 'key', e.target.value)}
+                                                />
+                                                <input 
+                                                    className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="Value"
+                                                    value={field.value}
+                                                    onChange={e => updateCustomField(field.id, 'value', e.target.value)}
+                                                />
+                                                <button onClick={() => removeCustomField(field.id)} className="text-gray-400 hover:text-red-500 p-1">
+                                                     <Box size={14} className="rotate-45" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {customFieldList.length === 0 && (
+                                            <div className="text-xs text-center text-gray-400 border border-dashed border-gray-200 rounded-lg py-4">
+                                                No custom fields added.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                              </div>
                         </div>
@@ -313,7 +352,7 @@ export const AppGeneratorView: React.FC = () => {
                                 <p className="text-sm text-gray-500">Define the core coding standards and stack.</p>
                             </div>
 
-                            {/* App Name */}
+                            {/* App Name (Duplicated here for context but synced state) */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Application Name</label>
                                 <div className="relative">
