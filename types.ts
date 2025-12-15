@@ -56,6 +56,7 @@ export enum ModuleType {
   APP_GENERATOR = 'app_generator',
   FOLDERS = 'folders',
   EBOOKS = 'ebooks',
+  CALENDAR = 'calendar',
 }
 
 export interface Block {

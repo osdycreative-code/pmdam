@@ -15,6 +15,7 @@ import { MainDashboard } from './components/MainDashboard';
 import LoginPage from './src/pages/LoginPage';
 // import { LoginPage } from './components/LoginPage'; // Deprecated
 import EbookManager from './components/EbookManager';
+import { CalendarView } from './components/CalendarView';
 import { PersistenceProvider } from './src/context/CentralizedPersistenceContext';
 import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable } from './types';
 import { Bell, X, Loader2, Menu } from 'lucide-react';
@@ -819,6 +820,8 @@ const App: React.FC = () => {
               return <FoldersView />;
           case ModuleType.EBOOKS:
               return <EbookManager />;
+          case ModuleType.CALENDAR:
+              return <CalendarView />;
           case ModuleType.TASKS:
           default:
               return <TaskList />;

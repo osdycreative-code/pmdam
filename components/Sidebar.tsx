@@ -73,6 +73,7 @@ export const Sidebar: React.FC = () => {
           case ModuleType.APP_GENERATOR: return <Code2 size={16} />;
           case ModuleType.FOLDERS: return <FolderOpen size={16} />;
           case ModuleType.EBOOKS: return <Book size={16} />;
+          case ModuleType.CALENDAR: return <Clock size={16} />;
           default: return <Layout size={16} />;
       }
   };
@@ -113,7 +114,8 @@ export const Sidebar: React.FC = () => {
       { type: ModuleType.DIRECTORY, label: 'AI Directory', icon: BrainCircuit, desc: 'Tool curation' },
       { type: ModuleType.STUDIO, label: 'Creative Studio', icon: Palette, desc: 'Generative AI' },
       { type: ModuleType.APP_GENERATOR, label: 'App Generator', icon: Code2, desc: 'Code Boilerplates' },
-      { type: ModuleType.EBOOKS, label: 'eBooks', icon: Book, desc: 'Manage and export eBooks' }
+      { type: ModuleType.EBOOKS, label: 'eBooks', icon: Book, desc: 'Manage and export eBooks' },
+      { type: ModuleType.CALENDAR, label: 'Calendar', icon: Clock, desc: 'Events and Deadlines' }
   ];
 
   return (
@@ -512,11 +514,15 @@ export const Sidebar: React.FC = () => {
                   <div className="mb-6">
                       <h3 className="text-sm font-bold text-gray-700 mb-3">Database</h3>
                       <button 
-                          onClick={resetData}
-                          className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-red-200 hover:bg-red-50 text-red-600 transition-colors"
+                          onClick={() => {
+                              if(window.confirm("⚠️ HARD RESET: This will wipe ALL LOCAL and CLOUD data. Are you sure?")) {
+                                  resetData();
+                              }
+                          }}
+                          className="w-full text-left p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors shadow-sm"
                       >
-                          Reset Local Data
-                          <p className="text-xs text-gray-500 mt-1">Delete all local data and restore to demo state</p>
+                          <span className="font-bold">Reset DB (Click to Wipe)</span>
+                          <p className="text-xs text-red-600 mt-1">⚠️ Danger: This will delete ALL data (Local + Cloud) and log you out.</p>
                       </button>
                   </div>
                   
