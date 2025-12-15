@@ -1,11 +1,16 @@
 import React, { useContext, useState } from 'react';
 import { StoreContext } from '../App';
-import { Task } from '../types';
+import { Task, TaskPriority } from '../types';
 import { ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon } from 'lucide-react';
 
 export const CalendarView: React.FC = () => {
-    const { tasks, activeListId } = useContext(StoreContext);
+    const { tasks, activeListId, createTask } = useContext(StoreContext);
     const [currentDate, setCurrentDate] = useState(new Date());
+    
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [newEventTitle, setNewEventTitle] = useState('');
 
     // Filter tasks for the current module/list that have due dates
     const calendarTasks = tasks.filter(t => 
@@ -27,6 +32,29 @@ export const CalendarView: React.FC = () => {
 
     const prevMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+    };
+
+    const handleDayClick = (year: number, month: number, day: number) => {
+        const clickedDate = new Date(year, month, day);
+        setSelectedDate(clickedDate);
+        setNewEventTitle('');
+        setIsModalOpen(true);
+    };
+
+    const handleCreateEvent = () => {
+        if (!newEventTitle.trim() || !selectedDate || !activeListId) return;
+
+        createTask(activeListId, newEventTitle, {
+            dueDate: selectedDate,
+            priority: TaskPriority.MEDIUM // Default
+        });
+
+        setIsModalOpen(false);
+    };
+    
+    // Allow 'Enter' key to submit
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleCreateEvent();
     };
 
     const renderCalendar = () => {
@@ -61,25 +89,41 @@ export const CalendarView: React.FC = () => {
             const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
 
             days.push(
-                <div key={day} className={`h-32 border border-gray-100 p-2 flex flex-col group hover:bg-gray-50 transition-colors ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                <div 
+                    key={day} 
+                    onClick={() => handleDayClick(year, month, day)}
+                    className={`h-32 border border-gray-100 p-2 flex flex-col group hover:bg-gray-50 transition-colors cursor-pointer ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}
+                >
                     <div className="flex justify-between items-start mb-1">
                         <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white' : 'text-gray-700'}`}>
                             {day}
                         </span>
-                        {daysTasks.length > 0 && (
-                            <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-medium">
-                                {daysTasks.length}
-                            </span>
-                        )}
+                        
+                        <div className="flex gap-1">
+                            {/* Plus icon on hover */}
+                            <button className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity">
+                                <span className="text-xs font-bold">+</span>
+                            </button>
+                            
+                            {daysTasks.length > 0 && (
+                                <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-medium">
+                                    {daysTasks.length}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
                         {daysTasks.map(task => (
                             <div 
                                 key={task.id} 
-                                className="text-[10px] p-1.5 rounded bg-white border border-l-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer truncate"
+                                className="text-[10px] p-1.5 rounded bg-white border border-l-4 shadow-sm hover:shadow-md transition-shadow truncate"
                                 style={{ borderLeftColor: getPriorityColor(task.priority) }}
                                 title={task.title}
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent opening create modal when clicking a task
+                                    // handleNavigateToTask(task.id);
+                                }}
                             >
                                 <div className="font-medium text-gray-800 truncate">{task.title}</div>
                                 {task.reminder && (
@@ -96,7 +140,7 @@ export const CalendarView: React.FC = () => {
         }
 
         return (
-            <div className="flex-1 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex-1 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
                 {/* Calendar Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
                     <div className="flex items-center gap-4">
@@ -131,6 +175,51 @@ export const CalendarView: React.FC = () => {
                 <div className="grid grid-cols-7 flex-1 bg-gray-200 gap-px overflow-y-auto">
                     {days}
                 </div>
+
+                {/* Create Event Modal */}
+                {isModalOpen && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-fadeIn">
+                        <div className="bg-white rounded-xl shadow-2xl w-96 p-6 transform transition-all scale-100 border border-gray-100">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <CalendarIcon size={18} className="text-indigo-600" />
+                                New Event
+                            </h3>
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                                <div className="text-sm font-medium text-gray-800 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                                    {selectedDate?.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                </div>
+                            </div>
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Event Title</label>
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="Meeting with team..."
+                                    value={newEventTitle}
+                                    onChange={(e) => setNewEventTitle(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button 
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleCreateEvent}
+                                    disabled={!newEventTitle.trim()}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Create Event
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Book, Plus, Search, Download, Trash2, Eye, Edit3, ArrowLeft, Save, Layout, Layers, FileText, Image as ImageIcon, Sparkles, ChevronDown, ChevronRight, Wand2 } from 'lucide-react';
 import { StoreContext } from '../App';
 import { Block, BlockType } from '../types';
@@ -54,6 +54,10 @@ const EbookManager: React.FC = () => {
     const [selectedEbookId, setSelectedEbookId] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState<{ type: EditorSection, id?: string } | null>(null);
     const [expandedSections, setExpandedSections] = useState({ frontMatter: true, chapters: true, backMatter: true });
+
+    // File Upload State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadType, setUploadType] = useState<'cover' | 'back' | null>(null);
 
     // Initialize
     useEffect(() => {
@@ -375,7 +379,30 @@ const EbookManager: React.FC = () => {
         );
     };
 
-    // --- Image Handling Helpers (Mock) ---
+    // --- Image Handling Helpers ---
+    const triggerFileUpload = (type: 'cover' | 'back') => {
+        setUploadType(type);
+        if(fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if(!file || !selectedEbookId || !uploadType) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUrl = e.target?.result as string;
+            if(uploadType === 'cover') handleUpdateEbook(selectedEbookId, { coverImage: dataUrl });
+            else handleUpdateEbook(selectedEbookId, { backCoverImage: dataUrl });
+            
+            // Allow re-uploading the same file
+            event.target.value = '';
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleImageUpload = async (ebookId: string, type: 'cover' | 'back') => {
         const url = await promptModal('image_url');
         if(url) {
@@ -459,12 +486,12 @@ const EbookManager: React.FC = () => {
                 <div className="flex-1 flex overflow-hidden">
                     {/* SIDEBAR */}
                     <div className="w-64 border-r border-gray-200 bg-gray-50 flex flex-col overflow-y-auto">
-                        {/* Cover Image Slot */}
+                         {/* Cover Image Slot */}
                         <div className="p-3 border-b border-gray-200">
                             <div className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
                                 <span>Cover (Portada)</span>
                                 <div className="flex gap-1">
-                                    <button onClick={() => handleImageUpload(ebook.id, 'cover')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
+                                    <button onClick={() => triggerFileUpload('cover')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
                                     <button onClick={() => handleAIGenerateImage(ebook.id, 'cover')} title="Generate AI" className="p-1 hover:bg-gray-200 rounded text-purple-600"><Sparkles size={12}/></button>
                                 </div>
                             </div>
@@ -587,7 +614,7 @@ const EbookManager: React.FC = () => {
                             <div className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center justify-between">
                                 <span>Back Cover (Contraportada)</span>
                                 <div className="flex gap-1">
-                                    <button onClick={() => handleImageUpload(ebook.id, 'back')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
+                                    <button onClick={() => triggerFileUpload('back')} title="Upload" className="p-1 hover:bg-gray-200 rounded"><ImageIcon size={12}/></button>
                                     <button onClick={() => handleAIGenerateImage(ebook.id, 'back')} title="Generate AI" className="p-1 hover:bg-gray-200 rounded text-purple-600"><Sparkles size={12}/></button>
                                 </div>
                             </div>
@@ -599,6 +626,15 @@ const EbookManager: React.FC = () => {
                                 )}
                             </div>
                         </div>
+
+                        {/* Hidden File Input */}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                        />
 
                     </div>
 

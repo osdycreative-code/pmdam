@@ -17,7 +17,7 @@ import LoginPage from './src/pages/LoginPage';
 import EbookManager from './components/EbookManager';
 import { CalendarView } from './components/CalendarView';
 import { PersistenceProvider } from './src/context/CentralizedPersistenceContext';
-import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable } from './types';
+import { Space, List, Task, TaskStatus, TaskPriority, BlockType, Product, AITool, ModuleType, Project, ProjectTemplate, FinanceTransaction, FolderItem, FolderItemType, AppNotification, AccountPayable, AccountReceivable, ProjectStatus, TransactionType } from './types';
 import { Bell, X, Loader2, Menu } from 'lucide-react';
 import { dbService, STORES } from './services/db';
 import { supabase, deleteAllSupabaseData } from './services/supabaseClient';
@@ -46,7 +46,7 @@ interface StoreContextType {
   deleteTask: (taskId: string) => void;
   updateList: (listId: string, updates: Partial<List>) => void;
   deleteList: (listId: string) => void;
-  createTask: (listId: string, title: string) => void;
+  createTask: (listId: string, title: string, overrides?: Partial<Task>) => void;
   createSpace: (name: string, modules: ModuleType[]) => void;
   updateSpace: (spaceId: string, updates: Partial<Space>) => void;
   deleteSpace: (spaceId: string) => void;
@@ -139,27 +139,71 @@ const App: React.FC = () => {
         ] = await Promise.all([
             dbService.getAll<Space>(STORES.SPACES),
             dbService.getAll<List>(STORES.LISTS),
-            Promise.resolve([]), // dbService.getAll<Task>(STORES.TASKS),
+            dbService.getAll<any>(STORES.TASKS), // Fetch as raw/LocalTask
             dbService.getAll<Product>(STORES.PRODUCTS),
             dbService.getAll<AITool>(STORES.AI_TOOLS),
-            Promise.resolve([]), // dbService.getAll<Project>(STORES.PROJECTS),
+            dbService.getAll<any>(STORES.PROJECTS), // Fetch as raw/LocalProject
             dbService.getAll<ProjectTemplate>(STORES.TEMPLATES),
-            Promise.resolve([]), // dbService.getAll<FinanceTransaction>(STORES.TRANSACTIONS),
+            dbService.getAll<any>(STORES.TRANSACTIONS), // Fetch as raw/LocalFinance
             dbService.getAll<FolderItem>(STORES.FOLDER_ITEMS),
             dbService.getAll<AppNotification>(STORES.NOTIFICATIONS),
             dbService.getAll<AccountPayable>(STORES.ACCOUNTS_PAYABLE),
             dbService.getAll<AccountReceivable>(STORES.ACCOUNTS_RECEIVABLE),
-
         ]);
 
         setSpaces(lSpaces);
         setLists(lLists);
-        setTasks(lTasks);
+
+        // --- MAPPERS ---
+        
+        // Map LocalTask (Tarea) to Frontend Task
+        const mappedTasks: Task[] = lTasks.map((t: any) => ({
+            id: t.id,
+            listId: t.proyecto_id || 'default', // Map project_id to listId
+            title: t.titulo_tarea,
+            description: t.descripcion,
+            contentBlocks: [], // Legacy tasks don't have blocks
+            subtasks: [],
+            status: t.estado === 'Terminado' ? TaskStatus.DONE : (t.estado === 'En Progreso' ? TaskStatus.IN_PROGRESS : TaskStatus.TODO),
+            priority: t.prioridad === 'Alta' ? TaskPriority.HIGH : (t.prioridad === 'Baja' ? TaskPriority.LOW : TaskPriority.MEDIUM),
+            dueDate: t.fecha_vencimiento ? new Date(t.fecha_vencimiento) : undefined,
+            createdAt: t.ultima_actualizacion ? new Date(t.ultima_actualizacion) : new Date(),
+            customFieldValues: {}
+        }));
+        setTasks(mappedTasks);
+
         setProducts(lProducts);
         setAiTools(lAiTools);
-        setProjects(lProjects);
+
+        // Map LocalProject (ProyectoMaestro) to Frontend Project
+        const mappedProjects: Project[] = lProjects.map((p: any) => ({
+            id: p.id,
+            listId: 'projects_list',
+            name: p.nombre_proyecto,
+            description: p.tipo_activo,
+            status: p.progreso_total === 100 ? ProjectStatus.COMPLETED : ProjectStatus.ACTIVE,
+            startDate: p.fecha_creacion ? new Date(p.fecha_creacion) : new Date(),
+            endDate: p.fecha_creacion ? new Date(new Date(p.fecha_creacion).setDate(new Date(p.fecha_creacion).getDate() + 30)) : new Date(), // Dummy end date
+            progress: p.progreso_total || 0,
+            ownerId: 'me',
+            customFieldValues: {}
+        }));
+        setProjects(mappedProjects);
+        
         setProjectTemplates(lTemplates);
-        setTransactions(lTrans);
+
+        // Map LocalFinance (RegistroFinanzas) to Frontend FinanceTransaction
+        const mappedTrans: FinanceTransaction[] = lTrans.map((f: any) => ({
+            id: f.id,
+            listId: f.proyecto_id || 'finance_list',
+            description: f.concepto,
+            amount: f.monto,
+            type: f.tipo_transaccion === 'Ingreso' ? TransactionType.INCOME : TransactionType.EXPENSE,
+            date: f.fecha_transaccion ? new Date(f.fecha_transaccion) : new Date(),
+            category: f.categoria || 'General'
+        }));
+        setTransactions(mappedTrans);
+
         setFolderItems(lFolders);
         setNotifications(lNotifs);
         setAccountsPayable(lAccountsPayable);
@@ -369,7 +413,7 @@ const App: React.FC = () => {
       if (activeListId === listId) setActiveListId(null);
   };
 
-  const createTask = (listId: string, title: string) => {
+  const createTask = (listId: string, title: string, overrides: Partial<Task> = {}) => {
       const newTask: Task = {
           id: crypto.randomUUID(),
           listId,
@@ -380,9 +424,10 @@ const App: React.FC = () => {
           subtasks: [],
           createdAt: new Date(),
           customFieldValues: {},
+          ...overrides
       };
       setTasks(prev => [...prev, newTask]);
-      // dbService.addItem(STORES.TASKS, newTask);
+      dbService.addItem(STORES.TASKS, newTask);
       setActiveTaskId(newTask.id);
   };
 
